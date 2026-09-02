@@ -1,244 +1,170 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GG Player Web</title>
-
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-
-  <style>
-    body { background-color: #0d0f12; color: #e5e7eb; user-select: none; }
-    .hide-scrollbar::-webkit-scrollbar { display: none; }
-    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Player</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 90%;
+        }
+        .logo {
+            max-width: 120px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .id-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .btn-copy {
+            background-color: #333;
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+        .btn-copy:hover {
+            background-color: #555;
+        }
+        /* Tela Principal de Navegação (Escondida por padrão) */
+        #mainScreen {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #1e1e1e;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        .header .logo {
+            max-width: 80px;
+            margin-bottom: 0;
+        }
+        /* Botão de Suporte Discreto no Rodapé */
+        .btn-suporte {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background-color: #25D366;
+            color: white;
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+        .btn-suporte:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
 
-<div id="app" class="h-screen w-screen flex flex-col overflow-hidden">
-
-  <div v-if="!authorized" class="flex-1 flex flex-col justify-center items-center p-6 text-center">
-    <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl max-w-md w-full shadow-2xl">
-      <div class="w-16 h-16 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">!</div>
-      <h1 class="text-2xl font-bold text-white mb-2">Aguardando Ativação</h1>
-      <p class="text-gray-400 text-sm mb-6">Informe o ID abaixo ao seu provedor para ativar o acesso no seu iOS/Navegador.</p>
-      <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 font-mono text-xl tracking-widest text-emerald-400 mb-4">
-        {{ deviceId }}
-      </div>
-      <button @click="checkDeviceStatus" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition">
-        Verificar Novamente
-      </button>
+<!-- TELA DE LOGIN / ID -->
+<div class="container" id="loginScreen">
+    <img src="logo_gg.png" alt="Logo GG" class="logo">
+    <h2>Acesso ao Player</h2>
+    <p>Seu ID do dispositivo:</p>
+    
+    <div class="id-box">
+        <span id="deviceId">Carregando...</span>
+        <button class="btn-copy" onclick="copiarID()">Copiar</button>
     </div>
-  </div>
 
-  <template v-else>
-    <header class="h-14 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-4">
-      <div class="flex items-center gap-2">
-        <span class="text-emerald-500 font-black text-xl tracking-wider">GG</span>
-        <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded font-mono">WEB</span>
-      </div>
-      <input 
-        v-model="searchQuery" 
-        type="text" 
-        placeholder="Buscar canais, filmes, séries..." 
-        class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm w-48 sm:w-80 focus:outline-none focus:border-emerald-500 text-white"
-      />
-    </header>
-
-    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-      
-      <div v-if="currentStream" class="w-full md:w-2/3 bg-black flex flex-col justify-center relative">
-        <video id="videoPlayer" class="w-full h-full max-h-[60vh] md:max-h-full" controls autoplay></video>
-        <button @click="closePlayer" class="absolute top-4 right-4 bg-black/60 text-white p-2 rounded-full hover:bg-red-600">✕</button>
-      </div>
-
-      <div class="flex-1 flex flex-col overflow-hidden bg-gray-900">
-        <nav class="flex bg-gray-950 border-b border-gray-800 text-sm overflow-x-auto hide-scrollbar">
-          <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" 
-                  :class="['px-5 py-3 whitespace-nowrap font-medium transition', activeTab === tab.id ? 'text-emerald-400 border-b-2 border-emerald-500 bg-gray-900' : 'text-gray-400 hover:text-white']">
-            {{ tab.name }}
-          </button>
-        </nav>
-
-        <div class="flex-1 overflow-y-auto p-4 hide-scrollbar">
-          <div v-if="loading" class="flex justify-center items-center h-full text-gray-500">
-            Carregando conteúdo...
-          </div>
-          <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <div v-for="item in filteredContent" :key="item.stream_id || item.series_id" 
-                 @click="playContent(item)"
-                 class="bg-gray-950 rounded-xl overflow-hidden border border-gray-800/60 hover:border-emerald-500/50 cursor-pointer transition group flex flex-col">
-              <div class="aspect-[2/3] bg-gray-900 relative overflow-hidden">
-                <img :src="item.stream_icon || item.cover" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" @error="handleImgError" />
-              </div>
-              <div class="p-2.5 flex-1 flex flex-col justify-between">
-                <h3 class="text-xs font-semibold text-gray-200 line-clamp-2">{{ item.name }}</h3>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-  </template>
-
+    <button id="btnEntrar" onclick="verificarAcesso()">Entrar</button>
 </div>
 
+<!-- TELA PRINCIPAL DE NAVEGAÇÃO -->
+<div id="mainScreen">
+    <div class="header">
+        <img src="logo_gg.png" alt="Logo GG" class="logo">
+        <h2>Painel Principal</h2>
+    </div>
+    <div style="margin-top: 40px; text-align: center;">
+        <p>Bem-vindo ao Player! Conteúdo da navegação aqui.</p>
+    </div>
+</div>
+
+<!-- SUPORTE WHATSAPP (FIXO E DISCRETO) -->
+<a href="https://wa.me/5584998457394?text=Olá,%20preciso%20de%20suporte%20com%20o%20Web%20Player." target="_blank" class="btn-suporte">
+    💬 Suporte
+</a>
+
 <script>
-// --- Configuração Firebase (Substitua pelos seus dados) ---
-const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  projectId: "SEU_PROJECT_ID",
-  firestoreUrl: "SEU_FIRESTORE_URL"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-const { createApp, ref, onMounted, computed, watch } = Vue;
-
-createApp({
-  setup() {
-    const deviceId = ref('');
-    const authorized = ref(false);
-    const activeTab = ref('live');
-    const searchQuery = ref('');
-    const loading = ref(false);
-    const activeDns = ref('');
-    const credentials = ref({ username: '', password: '' });
-    const currentStream = ref(null);
-    const hls = ref(null);
-    const contentData = ref([]);
-
-    const tabs = [
-      { id: 'live', name: 'TV ao Vivo' },
-      { id: 'movies', name: 'Filmes' },
-      { id: 'series', name: 'Séries' },
-      { id: 'suggestions', name: 'Sugestões' },
-      { id: 'history', name: 'Histórico' }
-    ];
-
-    // 1. Identificação do Dispositivo
-    const getDeviceId = () => {
-      let id = localStorage.getItem('GG_DEVICE_ID');
-      if (!id) {
-        id = 'GG-' + Math.floor(100000 + Math.random() * 900000);
-        localStorage.setItem('GG_DEVICE_ID', id);
-      }
-      return id;
-    };
-
-    // 2. Consulta de Ativação no Firestore
-    const checkDeviceStatus = async () => {
-      deviceId.value = getDeviceId();
-      try {
-        const doc = await db.collection('devices').doc(deviceId.value).get();
-        if (doc.exists && doc.data().authorized) {
-          const data = doc.data();
-          authorized.value = true;
-          credentials.value = { username: data.username, password: data.password };
-          await resolveDnsMode(data);
-        } else {
-          authorized.value = false;
+    function obterOuGerarID() {
+        let id = localStorage.getItem("device_id");
+        if (!id) {
+            id = "GG-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+            localStorage.setItem("device_id", id);
         }
-      } catch (err) {
-        console.error("Erro na ativação:", err);
-      }
-    };
+        return id;
+    }
 
-    // Resolução de Failover/Modo de DNS
-    const resolveDnsMode = async (data) => {
-      if (data.mode === 'fixed') {
-        activeDns.value = data.fixed_url;
-      } else if (data.mode === 'dynamic' || data.mode === 'balance') {
-        // Exemplo: Buscar lista em repositório txt
-        activeDns.value = data.fixed_url; 
-      }
-      loadCategoryData();
-    };
+    const deviceId = obterOuGerarID();
+    document.getElementById("deviceId").innerText = deviceId;
 
-    // Filtro de Conteúdo Adulto
-    const isAdult = (name) => {
-      const regex = /(XXX|18\+|ADULTO|PORN|SEXO|EROTICO)/i;
-      return regex.test(name);
-    };
+    function copiarID() {
+        navigator.clipboard.writeText(deviceId).then(() => {
+            alert("ID copiado para a área de transferência!");
+        });
+    }
 
-    // Carregamento de Dados (com Fallback e Cache local)
-    const loadCategoryData = async () => {
-      loading.value = true;
-      const endpoint = `${activeDns.value}/player_api.php?username=${credentials.value.username}&password=${credentials.value.password}&action=get_live_streams`;
-      
-      try {
-        const res = await fetch(endpoint);
-        const data = await res.json();
-        // Filtra conteúdo adulto por padrão
-        contentData.value = data.filter(item => !isAdult(item.name));
-      } catch (e) {
-        console.error("Erro ao carregar dados", e);
-      } finally {
-        loading.value = false;
-      }
-    };
-
-    // Configuração do Player com HLS.js
-    const playContent = (item) => {
-      currentStream.value = item;
-      const streamUrl = `${activeDns.value}/live/${credentials.value.username}/${credentials.value.password}/${item.stream_id}.m3u8`;
-
-      setTimeout(() => {
-        const video = document.getElementById('videoPlayer');
-        if (Hls.isSupported()) {
-          if (hls.value) hls.value.destroy();
-          
-          hls.value = new Hls({
-            maxBufferLength: 50, // Buffer agressivo de 50 segundos
-            maxMaxBufferLength: 100,
-            manifestLoadingTimeOut: 20000,
-            fragLoadingTimeOut: 20000,
-            skipBufferHole: true // Ignora descontinuidades
-          });
-
-          hls.value.loadSource(streamUrl);
-          hls.value.attachMedia(video);
-          hls.value.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          // Fallback para Safari / iOS Nativo
-          video.src = streamUrl;
-          video.play();
-        }
-      }, 100);
-    };
-
-    const closePlayer = () => {
-      if (hls.value) hls.value.destroy();
-      currentStream.value = null;
-    };
-
-    const filteredContent = computed(() => {
-      if (!searchQuery.value) return contentData.value;
-      return contentData.value.filter(i => i.name.toLowerCase().includes(searchQuery.value.toLowerCase()));
-    });
-
-    const handleImgError = (e) => {
-      e.target.src = 'https://via.placeholder.com/300x450/111827/ffffff?text=Sem+Imagem';
-    };
-
-    onMounted(() => {
-      checkDeviceStatus();
-    });
-
-    return {
-      deviceId, authorized, activeTab, tabs, searchQuery, loading,
-      filteredContent, currentStream, checkDeviceStatus, playContent,
-      closePlayer, handleImgError
-    };
-  }
-}).mount('#app');
+    function verificarAcesso() {
+        // Exemplo: Simula acesso permitido e transição para a tela principal
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("mainScreen").style.display = "block";
+    }
 </script>
+
 </body>
 </html>
