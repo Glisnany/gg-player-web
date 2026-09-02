@@ -652,12 +652,7 @@
 
 
             /* ---------------------------------------------
-               3. ENVIAR A URL COMPLETA AO WORKER
-               
-               encodeURIComponent é FUNDAMENTAL.
-               Ele transforma os & da URL M3U em %26,
-               impedindo que sejam interpretados como
-               parâmetros do próprio Worker.
+               3. URL COMPLETA DO WORKER
                --------------------------------------------- */
 
             const linkProxy =
@@ -697,10 +692,6 @@
                     }
                 );
 
-
-            /* ---------------------------------------------
-               5. LER RESPOSTA
-               --------------------------------------------- */
 
             const text =
                 await res.text();
@@ -744,10 +735,6 @@
             }
 
 
-            /* ---------------------------------------------
-               6. VERIFICAR SE REALMENTE É M3U
-               --------------------------------------------- */
-
             if (
                 !/#EXTM3U/i.test(
                     text
@@ -765,7 +752,7 @@
 
 
             /* ---------------------------------------------
-               7. PROCESSAR LISTA
+               5. PROCESSAR LISTA
                --------------------------------------------- */
 
             status.textContent =
@@ -789,10 +776,6 @@
             }
 
 
-            /* ---------------------------------------------
-               8. DEBUG
-               --------------------------------------------- */
-
             debug.textContent =
                 "Itens carregados: " +
                 totalCarregado +
@@ -805,7 +788,7 @@
 
 
             /* ---------------------------------------------
-               9. ABRIR PLAYER
+               6. ABRIR PLAYER
                --------------------------------------------- */
 
             document
@@ -1788,7 +1771,30 @@
 
 
         /* ---------------------------------------------
-           HLS NATIVO
+           URL DO CONTEÚDO PELO WORKER
+           --------------------------------------------- */
+
+        const streamUrl =
+            PROXY_URL +
+            "?stream=" +
+            encodeURIComponent(
+                url
+            );
+
+
+        console.log(
+            "GG PLAYER - STREAM ORIGINAL:",
+            url
+        );
+
+        console.log(
+            "GG PLAYER - STREAM PELO WORKER:",
+            streamUrl
+        );
+
+
+        /* ---------------------------------------------
+           HLS NATIVO - SAFARI / iOS
            --------------------------------------------- */
 
         const nativeHls =
@@ -1800,7 +1806,7 @@
         if (nativeHls) {
 
             video.src =
-                url;
+                streamUrl;
 
 
             try {
@@ -1833,6 +1839,7 @@
 
             hls =
                 new Hls({
+
                     enableWorker:
                         true,
 
@@ -1841,11 +1848,12 @@
 
                     backBufferLength:
                         30
+
                 });
 
 
             hls.loadSource(
-                url
+                streamUrl
             );
 
 
@@ -1943,7 +1951,7 @@
            --------------------------------------------- */
 
         video.src =
-            url;
+            streamUrl;
 
 
         video
