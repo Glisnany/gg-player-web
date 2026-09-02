@@ -330,7 +330,7 @@
     'use strict';
 
     // ==========================================
-    // CONFIGURAÇÃO DO FIREBASE
+    // CONFIGURAÇÃO DO FIREBASE (SOMENTE LEITURA)
     // ==========================================
     const firebaseConfig = {
         apiKey: "AIzaSyC06Bn7C-llo0B0vIfE7Nxq5vkEhBk2U-w",
@@ -378,70 +378,65 @@
     }
 
     // ==========================================
-    // LEITURA DO FIREBASE & M3U PARSER
+    // LEITURA DO FIREBASE E PROXY CORS PARA M3U
     // ==========================================
     async function iniciarConexao() {
-        statusMsg.textContent = "Verificando autorização...";
-        console.log("Iniciando verificação para o ID:", currentID);
+        statusMsg.textContent = "Consultando dispositivo...";
 
         try {
             const docRef = db.collection("devices").doc(currentID);
             const docSnap = await docRef.get();
 
             if (!docSnap.exists) {
-                console.log("Documento não existe. Criando documento pendente...");
-                await docRef.set({ 
-                    authorized: false, 
-                    fixed_url: "",
-                    mode: "fixed" 
-                }, { merge: true });
-                statusMsg.textContent = "ID pendente de ativação no painel.";
+                statusMsg.textContent = "ID não cadastrado no painel. Cadastre o ID exibido acima.";
                 return;
             }
 
             const data = docSnap.data();
-            console.log("Dados retornados do Firestore:", data);
 
-            // Validação explícita dos campos
             if (data.authorized !== true) {
-                statusMsg.textContent = "ID pendente de ativação (authorized=false).";
+                statusMsg.textContent = "Acesso negado: Dispositivo não autorizado.";
                 return;
             }
 
-            // Garante leitura flexível do modo ("fixed" ou "FIXED")
             const mode = (data.mode || "").toLowerCase();
             if (mode !== "fixed") {
-                statusMsg.textContent = `Modo '${data.mode}' não suportado. Altere para 'fixed'.`;
+                statusMsg.textContent = `Modo '${data.mode}' não é suportado pelo Web Player.`;
                 return;
             }
 
-            const m3uUrl = data.fixed_url ? data.fixed_url.trim() : "";
+            let m3uUrl = data.fixed_url ? data.fixed_url.trim() : "";
             if (!m3uUrl) {
-                statusMsg.textContent = "Campo fixed_url está vazio no Firebase.";
+                statusMsg.textContent = "Nenhuma lista M3U (fixed_url) associada a este dispositivo.";
                 return;
             }
 
-            statusMsg.textContent = "Carregando lista M3U...";
-            console.log("Baixando M3U de:", m3uUrl);
+            statusMsg.textContent = "Baixando lista de canais...";
 
-            // Download da lista com suporte a CORS
-            const res = await fetch(m3uUrl);
-            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+            // Burlar bloqueio de CORS do navegador usando Proxy
+            const corsProxy = "https://corsproxy.io/?";
+            const targetUrl = corsProxy + encodeURIComponent(m3uUrl);
+
+            const res = await fetch(targetUrl);
+            if (!res.ok) throw new Error(`Falha no download (HTTP ${res.status})`);
             
             const m3uText = await res.text();
             parseM3U(m3uText);
 
-            statusMsg.textContent = "Lista carregada!";
+            statusMsg.textContent = "Carregado com sucesso!";
             loginScreen.classList.add("hidden");
             mainScreen.classList.remove("hidden");
             carregarAba('tv');
 
         } catch (error) {
-            console.error("Erro na conexão:", error);
-            statusMsg.textContent = "Erro de conexão/CORS ao baixar a lista ou acessar o Firebase.";
+            console.error("Erro na leitura:", error);
+            statusMsg.textContent = "Erro de conexão/CORS ao baixar a lista. O servidor da lista bloqueou a requisição Web.";
         }
     }
 
+    // ==========================================
+    // PARSER DA LISTA M3U
+    // ==========================================
     function parseM3U(content) {
         playlistData = { tv: [], filmes: [], series: [] };
         const lines = content.split('\n');
