@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -8,15 +7,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
 
-```
-<title>GG Player Web</title>
+    <title>GG Player Web</title>
 
-<!-- HLS.js para navegadores que não possuem HLS nativo -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <style>
     * {
@@ -48,10 +44,6 @@
     .hidden {
         display: none !important;
     }
-
-    /* =========================
-       LOGIN
-       ========================= */
 
     #loginScreen {
         position: fixed;
@@ -135,10 +127,6 @@
         line-height: 1.4;
         word-break: break-word;
     }
-
-    /* =========================
-       PLAYER
-       ========================= */
 
     #mainScreen {
         position: fixed;
@@ -284,10 +272,6 @@
         margin-bottom: 8px;
     }
 
-    /* =========================
-       PLAYER MODAL
-       ========================= */
-
     #playerModal {
         position: fixed;
         inset: 0;
@@ -350,10 +334,6 @@
         object-fit: contain;
     }
 
-    /* =========================
-       MOBILE
-       ========================= */
-
     @media (max-width: 700px) {
         .content {
             flex-direction: column;
@@ -400,18 +380,12 @@
         }
     }
 </style>
-```
-
 </head>
 
 <body>
 
-```
-<!-- =========================
-     LOGIN
-     ========================= -->
-
 <div id="loginScreen">
+
     <div class="login-box">
 
         <img
@@ -438,12 +412,9 @@
         <div id="debugInfo" class="debug-info"></div>
 
     </div>
+
 </div>
 
-
-<!-- =========================
-     MAIN
-     ========================= -->
 
 <div id="mainScreen" class="hidden">
 
@@ -492,10 +463,6 @@
 </div>
 
 
-<!-- =========================
-     PLAYER
-     ========================= -->
-
 <div id="playerModal" class="hidden">
 
     <div class="player-head">
@@ -527,7 +494,7 @@
     </div>
 
 </div>
-```
+
 
 <script>
 
@@ -552,6 +519,14 @@
 
 
     /* =====================================================
+       CONFIGURAÇÃO DO PROXY
+       ===================================================== */
+
+    const PROXY_URL =
+        "https://delicate-sea-9281.glisnany.workers.dev/";
+
+
+    /* =====================================================
        ESTADO
        ===================================================== */
 
@@ -563,9 +538,15 @@
             .substring(2, 9)
             .toUpperCase();
 
-    localStorage.setItem("device_id", currentID);
+    localStorage.setItem(
+        "device_id",
+        currentID
+    );
 
-    document.getElementById("deviceId").textContent = currentID;
+    document.getElementById(
+        "deviceId"
+    ).textContent = currentID;
+
 
     let playlist = {
         tv: [],
@@ -582,16 +563,32 @@
        LOGIN / CARREGAMENTO DA M3U
        ===================================================== */
 
-    document.getElementById("btnEntrar").onclick = async function () {
+    document.getElementById(
+        "btnEntrar"
+    ).onclick = async function () {
 
-        const button = document.getElementById("btnEntrar");
-        const status = document.getElementById("statusMsg");
-        const debug = document.getElementById("debugInfo");
+        const button =
+            document.getElementById(
+                "btnEntrar"
+            );
+
+        const status =
+            document.getElementById(
+                "statusMsg"
+            );
+
+        const debug =
+            document.getElementById(
+                "debugInfo"
+            );
 
         button.disabled = true;
 
-        status.textContent = "Conectando ao Firebase...";
+        status.textContent =
+            "Conectando ao Firebase...";
+
         debug.textContent = "";
+
 
         try {
 
@@ -599,23 +596,44 @@
                1. BUSCAR DISPOSITIVO
                --------------------------------------------- */
 
-            const doc = await db
-                .collection("devices")
-                .doc(currentID)
-                .get();
+            const doc =
+                await db
+                    .collection("devices")
+                    .doc(currentID)
+                    .get();
+
 
             if (!doc.exists) {
-                throw new Error("ID não cadastrado no painel.");
+
+                throw new Error(
+                    "ID não cadastrado no painel."
+                );
+
             }
 
-            const data = doc.data();
+
+            const data =
+                doc.data();
+
 
             if (!data.authorized) {
-                throw new Error("Dispositivo não autorizado.");
+
+                throw new Error(
+                    "Dispositivo não autorizado."
+                );
+
             }
 
-            if (!data.fixed_url || !String(data.fixed_url).trim()) {
-                throw new Error("Sem URL cadastrada no Firestore.");
+
+            if (
+                !data.fixed_url ||
+                !String(data.fixed_url).trim()
+            ) {
+
+                throw new Error(
+                    "Sem URL cadastrada no Firestore."
+                );
+
             }
 
 
@@ -623,101 +641,113 @@
                2. URL DA LISTA
                --------------------------------------------- */
 
-            const m3uUrl = String(data.fixed_url).trim();
+            const m3uUrl =
+                String(
+                    data.fixed_url
+                ).trim();
 
-            status.textContent = "Baixando lista de canais...";
 
-
-            /*
-             * Mantém HTTP ou HTTPS exatamente como recebido.
-             * encodeURIComponent protege ? & = etc.
-             */
-
-            const linkProxy =
-                "proxy.php?url=" +
-                encodeURIComponent(m3uUrl);
+            status.textContent =
+                "Baixando lista de canais...";
 
 
             /* ---------------------------------------------
-               3. BUSCAR PELO PROXY
+               3. MONTAR URL DO CLOUDFLARE WORKER
                --------------------------------------------- */
 
-            const res = await fetch(
-                linkProxy,
-                {
-                    method: "GET",
-                    cache: "no-store",
-                    headers: {
-                        "Accept": "audio/x-mpegurl, application/x-mpegURL, text/plain, */*"
+            const linkProxy =
+                PROXY_URL +
+                "?url=" +
+                encodeURIComponent(
+                    m3uUrl
+                );
+
+
+            /* ---------------------------------------------
+               4. BUSCAR LISTA PELO WORKER
+               --------------------------------------------- */
+
+            const res =
+                await fetch(
+                    linkProxy,
+                    {
+                        method: "GET",
+                        cache: "no-store",
+                        headers: {
+                            "Accept":
+                                "audio/x-mpegurl, application/x-mpegURL, text/plain, */*"
+                        }
                     }
-                }
-            );
+                );
 
 
             if (!res.ok) {
 
-                const errTxt = await res.text();
+                const errTxt =
+                    await res.text();
 
                 throw new Error(
                     errTxt ||
-                    ("Proxy retornou HTTP " + res.status)
+                    (
+                        "Proxy retornou HTTP " +
+                        res.status
+                    )
                 );
+
             }
 
 
             /* ---------------------------------------------
-               4. LER TEXTO
+               5. LER TEXTO
                --------------------------------------------- */
 
-            const text = await res.text();
+            const text =
+                await res.text();
 
-            if (!text || !text.trim()) {
+
+            if (
+                !text ||
+                !text.trim()
+            ) {
+
                 throw new Error(
                     "O servidor retornou uma lista M3U vazia."
                 );
+
             }
 
 
             /* ---------------------------------------------
-               5. GARANTIR QUE É M3U
+               6. PROCESSAR LISTA
                --------------------------------------------- */
-
-            const preview =
-                text
-                    .replace(/^\uFEFF/, "")
-                    .trim()
-                    .substring(0, 500)
-                    .toUpperCase();
-
-            /*
-             * Algumas listas começam diretamente com #EXTINF.
-             * Outras começam com #EXTM3U.
-             *
-             * Portanto não exigimos obrigatoriamente #EXTM3U.
-             */
 
             status.textContent =
                 "Processando lista...";
 
 
             /* ---------------------------------------------
-               6. PARSER
+               7. PARSER
                --------------------------------------------- */
 
             const totalCarregado =
-                parseM3U(text);
+                parseM3U(
+                    text
+                );
 
 
-            if (totalCarregado <= 0) {
+            if (
+                totalCarregado <= 0
+            ) {
 
                 throw new Error(
                     "A lista foi baixada, mas nenhuma entrada válida foi encontrada."
                 );
+
             }
 
 
             /* ---------------------------------------------
-               7. DEBUG INTERNO
+               8. DEBUG
                --------------------------------------------- */
 
             debug.textContent =
@@ -732,19 +762,30 @@
 
 
             /* ---------------------------------------------
-               8. ABRIR PLAYER
+               9. ABRIR PLAYER
                --------------------------------------------- */
 
             document
-                .getElementById("loginScreen")
-                .classList.add("hidden");
+                .getElementById(
+                    "loginScreen"
+                )
+                .classList.add(
+                    "hidden"
+                );
+
 
             document
-                .getElementById("mainScreen")
-                .classList.remove("hidden");
+                .getElementById(
+                    "mainScreen"
+                )
+                .classList.remove(
+                    "hidden"
+                );
 
 
-            carregarAba("tv");
+            carregarAba(
+                "tv"
+            );
 
 
         } catch (error) {
@@ -754,27 +795,34 @@
                 error
             );
 
+
             status.textContent =
                 "Erro ao carregar a lista.";
 
+
             debug.textContent =
-                error && error.message
+                error &&
+                error.message
                     ? error.message
                     : String(error);
+
 
         } finally {
 
             button.disabled = false;
 
         }
+
     };
 
 
     /* =====================================================
-       PARSER M3U ROBUSTO
+       PARSER M3U
        ===================================================== */
 
-    function parseM3U(content) {
+    function parseM3U(
+        content
+    ) {
 
         playlist = {
             tv: [],
@@ -783,19 +831,26 @@
         };
 
 
-        /*
-         * Remove BOM e normaliza quebras de linha.
-         */
-
         const normalized =
             String(content)
-                .replace(/^\uFEFF/, "")
-                .replace(/\r\n/g, "\n")
-                .replace(/\r/g, "\n");
+                .replace(
+                    /^\uFEFF/,
+                    ""
+                )
+                .replace(
+                    /\r\n/g,
+                    "\n"
+                )
+                .replace(
+                    /\r/g,
+                    "\n"
+                );
 
 
         const lines =
-            normalized.split("\n");
+            normalized.split(
+                "\n"
+            );
 
 
         let current = null;
@@ -812,6 +867,7 @@
             const raw =
                 lines[i];
 
+
             const line =
                 raw.trim();
 
@@ -822,47 +878,58 @@
 
 
             /* ---------------------------------------------
-               #EXTINF
+               EXTINF
                --------------------------------------------- */
 
             if (
                 line
                     .toUpperCase()
-                    .startsWith("#EXTINF:")
+                    .startsWith(
+                        "#EXTINF:"
+                    )
             ) {
 
                 current = {
-                    name: "Canal sem nome",
-                    logo: "",
-                    group: "Geral"
+
+                    name:
+                        "Canal sem nome",
+
+                    logo:
+                        "",
+
+                    group:
+                        "Geral"
+
                 };
 
 
-                /*
-                 * Nome = conteúdo depois da última vírgula.
-                 *
-                 * Exemplo:
-                 *
-                 * #EXTINF:-1 tvg-name="X",Canal X
-                 */
-
                 const comma =
-                    line.lastIndexOf(",");
+                    line.lastIndexOf(
+                        ","
+                    );
 
-                if (comma !== -1) {
+
+                if (
+                    comma !== -1
+                ) {
 
                     const name =
                         line
-                            .substring(comma + 1)
+                            .substring(
+                                comma + 1
+                            )
                             .trim();
 
+
                     if (name) {
-                        current.name = name;
+
+                        current.name =
+                            name;
+
                     }
+
                 }
 
-
-                /* tvg-name */
 
                 const tvgName =
                     extrairAtributo(
@@ -870,13 +937,14 @@
                         "tvg-name"
                     );
 
+
                 if (tvgName) {
+
                     current.name =
                         tvgName;
+
                 }
 
-
-                /* tvg-logo */
 
                 const logo =
                     extrairAtributo(
@@ -884,13 +952,14 @@
                         "tvg-logo"
                     );
 
+
                 if (logo) {
+
                     current.logo =
                         logo;
+
                 }
 
-
-                /* group-title */
 
                 const group =
                     extrairAtributo(
@@ -898,33 +967,49 @@
                         "group-title"
                     );
 
+
                 if (group) {
+
                     current.group =
                         group;
+
                 }
 
 
                 continue;
+
             }
 
 
             /* ---------------------------------------------
-               #EXTGRP
+               EXTGRP
                --------------------------------------------- */
 
             if (
                 line
                     .toUpperCase()
-                    .startsWith("#EXTGRP:")
+                    .startsWith(
+                        "#EXTGRP:"
+                    )
             ) {
 
                 if (!current) {
+
                     current = {
-                        name: "Canal sem nome",
-                        logo: "",
-                        group: "Geral"
+
+                        name:
+                            "Canal sem nome",
+
+                        logo:
+                            "",
+
+                        group:
+                            "Geral"
+
                     };
+
                 }
+
 
                 const group =
                     line
@@ -933,55 +1018,65 @@
                         )
                         .trim();
 
+
                 if (group) {
+
                     current.group =
                         group;
+
                 }
 
+
                 continue;
+
             }
 
 
             /* ---------------------------------------------
-               TAGS M3U QUE NÃO SÃO URLs
+               OUTRAS TAGS
                --------------------------------------------- */
 
-            if (line.startsWith("#")) {
+            if (
+                line.startsWith("#")
+            ) {
+
                 continue;
+
             }
 
 
             /* ---------------------------------------------
-               URL DE STREAM
+               URL
                --------------------------------------------- */
-
-            /*
-             * Aceitamos explicitamente HTTP e HTTPS.
-             *
-             * Também removemos espaços acidentais.
-             */
 
             const isHttp =
-                /^https?:\/\//i.test(line);
+                /^https?:\/\//i.test(
+                    line
+                );
 
 
             if (!isHttp) {
+
                 continue;
+
             }
 
-
-            /*
-             * Caso apareça uma URL sem #EXTINF,
-             * ainda criamos o item.
-             */
 
             if (!current) {
 
                 current = {
-                    name: "Canal sem nome",
-                    logo: "",
-                    group: "Geral"
+
+                    name:
+                        "Canal sem nome",
+
+                    logo:
+                        "",
+
+                    group:
+                        "Geral"
+
                 };
+
             }
 
 
@@ -1011,7 +1106,9 @@
 
             const groupUpper =
                 item.group
-                    .normalize("NFD")
+                    .normalize(
+                        "NFD"
+                    )
                     .replace(
                         /[\u0300-\u036f]/g,
                         ""
@@ -1021,7 +1118,9 @@
 
             const nameUpper =
                 item.name
-                    .normalize("NFD")
+                    .normalize(
+                        "NFD"
+                    )
                     .replace(
                         /[\u0300-\u036f]/g,
                         ""
@@ -1034,34 +1133,54 @@
 
 
             const ehFilme =
-                groupUpper.includes("FILME") ||
-                groupUpper.includes("MOVIE") ||
-                groupUpper.includes("VOD") ||
-                urlLower.includes("/movie/") ||
-                urlLower.includes("/movies/");
+                groupUpper.includes(
+                    "FILME"
+                ) ||
+                groupUpper.includes(
+                    "MOVIE"
+                ) ||
+                groupUpper.includes(
+                    "VOD"
+                ) ||
+                urlLower.includes(
+                    "/movie/"
+                ) ||
+                urlLower.includes(
+                    "/movies/"
+                );
 
 
             const ehSerie =
-                groupUpper.includes("SERIE") ||
-                groupUpper.includes("SERIES") ||
-                groupUpper.includes("TV SHOW") ||
-                groupUpper.includes("SHOWS") ||
-                urlLower.includes("/series/");
+                groupUpper.includes(
+                    "SERIE"
+                ) ||
+                groupUpper.includes(
+                    "SERIES"
+                ) ||
+                groupUpper.includes(
+                    "TV SHOW"
+                ) ||
+                groupUpper.includes(
+                    "SHOWS"
+                ) ||
+                urlLower.includes(
+                    "/series/"
+                );
 
-
-            /*
-             * Nomes isolados com "FILME" ou "SERIE"
-             * também ajudam quando a categoria da lista
-             * está mal configurada.
-             */
 
             const nomeEhFilme =
-                nameUpper.includes("FILME");
+                nameUpper.includes(
+                    "FILME"
+                );
 
 
             const nomeEhSerie =
-                nameUpper.includes("SERIE") ||
-                nameUpper.includes("SÉRIE");
+                nameUpper.includes(
+                    "SERIE"
+                ) ||
+                nameUpper.includes(
+                    "SÉRIE"
+                );
 
 
             if (
@@ -1069,55 +1188,61 @@
                 nomeEhFilme
             ) {
 
-                playlist.filmes.push(item);
+                playlist.filmes.push(
+                    item
+                );
 
             } else if (
                 ehSerie ||
                 nomeEhSerie
             ) {
 
-                playlist.series.push(item);
+                playlist.series.push(
+                    item
+                );
 
             } else {
 
-                /*
-                 * Tudo que não for identificado como
-                 * filme ou série vai para TV.
-                 */
+                playlist.tv.push(
+                    item
+                );
 
-                playlist.tv.push(item);
             }
 
 
             totalCount++;
 
 
-            /*
-             * Muito importante:
-             * o próximo #EXTINF começa outro item.
-             */
-
             current = null;
+
         }
 
 
         console.log(
             "GG PLAYER - M3U carregada:",
             {
-                total: totalCount,
-                tv: playlist.tv.length,
-                filmes: playlist.filmes.length,
-                series: playlist.series.length
+                total:
+                    totalCount,
+
+                tv:
+                    playlist.tv.length,
+
+                filmes:
+                    playlist.filmes.length,
+
+                series:
+                    playlist.series.length
             }
         );
 
 
         return totalCount;
+
     }
 
 
     /* =====================================================
-       EXTRAIR ATRIBUTOS DO EXTINF
+       EXTRAIR ATRIBUTOS
        ===================================================== */
 
     function extrairAtributo(
@@ -1132,15 +1257,6 @@
             );
 
 
-        /*
-         * Aceita:
-         *
-         * tvg-logo="..."
-         *
-         * tvg-logo='...'
-         *
-         */
-
         const regex =
             new RegExp(
                 escaped +
@@ -1150,11 +1266,15 @@
 
 
         const match =
-            linha.match(regex);
+            linha.match(
+                regex
+            );
 
 
         if (!match) {
+
             return "";
+
         }
 
 
@@ -1163,6 +1283,7 @@
             match[2] ||
             ""
         ).trim();
+
     }
 
 
@@ -1170,16 +1291,23 @@
        CARREGAR ABA
        ===================================================== */
 
-    function carregarAba(tipo) {
+    function carregarAba(
+        tipo
+    ) {
 
-        abaAtual = tipo;
+        abaAtual =
+            tipo;
 
 
         document
-            .querySelectorAll(".tab-btn")
+            .querySelectorAll(
+                ".tab-btn"
+            )
             .forEach(
                 button =>
-                    button.classList.remove("active")
+                    button.classList.remove(
+                        "active"
+                    )
             );
 
 
@@ -1190,7 +1318,11 @@
 
 
         if (selectedButton) {
-            selectedButton.classList.add("active");
+
+            selectedButton.classList.add(
+                "active"
+            );
+
         }
 
 
@@ -1200,11 +1332,13 @@
             );
 
 
-        side.innerHTML = "";
+        side.innerHTML =
+            "";
 
 
         const lista =
-            playlist[tipo] || [];
+            playlist[tipo] ||
+            [];
 
 
         /* ---------------------------------------------
@@ -1212,7 +1346,9 @@
            --------------------------------------------- */
 
         const allBtn =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
 
         allBtn.className =
@@ -1229,19 +1365,32 @@
             function () {
 
                 document
-                    .querySelectorAll(".cat-item")
+                    .querySelectorAll(
+                        ".cat-item"
+                    )
                     .forEach(
                         c =>
-                            c.classList.remove("active")
+                            c.classList.remove(
+                                "active"
+                            )
                     );
 
-                allBtn.classList.add("active");
 
-                filtrar("");
+                allBtn.classList.add(
+                    "active"
+                );
+
+
+                filtrar(
+                    ""
+                );
+
             };
 
 
-        side.appendChild(allBtn);
+        side.appendChild(
+            allBtn
+        );
 
 
         /* ---------------------------------------------
@@ -1251,11 +1400,11 @@
         const grupos =
             [
                 ...new Set(
-                    lista
-                        .map(
-                            item =>
-                                item.group || "Geral"
-                        )
+                    lista.map(
+                        item =>
+                            item.group ||
+                            "Geral"
+                    )
                 )
             ]
             .sort(
@@ -1273,12 +1422,15 @@
                 const quantidade =
                     lista.filter(
                         item =>
-                            item.group === grupo
+                            item.group ===
+                            grupo
                     ).length;
 
 
                 const catBtn =
-                    document.createElement("div");
+                    document.createElement(
+                        "div"
+                    );
 
 
                 catBtn.className =
@@ -1296,25 +1448,41 @@
                     function () {
 
                         document
-                            .querySelectorAll(".cat-item")
+                            .querySelectorAll(
+                                ".cat-item"
+                            )
                             .forEach(
                                 c =>
-                                    c.classList.remove("active")
+                                    c.classList.remove(
+                                        "active"
+                                    )
                             );
 
 
-                        catBtn.classList.add("active");
+                        catBtn.classList.add(
+                            "active"
+                        );
 
-                        filtrar(grupo);
+
+                        filtrar(
+                            grupo
+                        );
+
                     };
 
 
-                side.appendChild(catBtn);
+                side.appendChild(
+                    catBtn
+                );
+
             }
         );
 
 
-        filtrar("");
+        filtrar(
+            ""
+        );
+
     }
 
 
@@ -1322,7 +1490,9 @@
        FILTRAR / RENDERIZAR
        ===================================================== */
 
-    function filtrar(grupo) {
+    function filtrar(
+        grupo
+    ) {
 
         const grid =
             document.getElementById(
@@ -1330,18 +1500,21 @@
             );
 
 
-        grid.innerHTML = "";
+        grid.innerHTML =
+            "";
 
 
         const base =
-            playlist[abaAtual] || [];
+            playlist[abaAtual] ||
+            [];
 
 
         const lista =
             grupo
                 ? base.filter(
                     item =>
-                        item.group === grupo
+                        item.group ===
+                        grupo
                 )
                 : base;
 
@@ -1358,6 +1531,7 @@
             `;
 
             return;
+
         }
 
 
@@ -1369,20 +1543,20 @@
             function (item) {
 
                 const card =
-                    document.createElement("div");
+                    document.createElement(
+                        "div"
+                    );
+
 
                 card.className =
                     "card";
 
 
                 const img =
-                    document.createElement("img");
+                    document.createElement(
+                        "img"
+                    );
 
-
-                /*
-                 * Se não houver logo,
-                 * simplesmente mostramos um fundo neutro.
-                 */
 
                 if (item.logo) {
 
@@ -1413,13 +1587,16 @@
                                 </text>
                             </svg>
                         `);
+
                 }
 
 
                 img.onerror =
                     function () {
 
-                        this.onerror = null;
+                        this.onerror =
+                            null;
+
 
                         this.src =
                             "data:image/svg+xml;charset=UTF-8," +
@@ -1446,11 +1623,14 @@
                                     </text>
                                 </svg>
                             `);
+
                     };
 
 
                 const title =
-                    document.createElement("div");
+                    document.createElement(
+                        "div"
+                    );
 
 
                 title.className =
@@ -1461,8 +1641,14 @@
                     item.name;
 
 
-                card.appendChild(img);
-                card.appendChild(title);
+                card.appendChild(
+                    img
+                );
+
+
+                card.appendChild(
+                    title
+                );
 
 
                 card.onclick =
@@ -1472,16 +1658,22 @@
                             item.url,
                             item.name
                         );
+
                     };
 
 
-                fragment.appendChild(card);
+                fragment.appendChild(
+                    card
+                );
 
             }
         );
 
 
-        grid.appendChild(fragment);
+        grid.appendChild(
+            fragment
+        );
+
     }
 
 
@@ -1513,7 +1705,8 @@
 
 
         title.textContent =
-            titulo || "Reproduzindo";
+            titulo ||
+            "Reproduzindo";
 
 
         modal.classList.remove(
@@ -1522,33 +1715,38 @@
 
 
         /* ---------------------------------------------
-           LIMPAR PLAYER ANTERIOR
+           LIMPAR PLAYER
            --------------------------------------------- */
 
         if (hls) {
 
             try {
+
                 hls.destroy();
+
             } catch (e) {
+
                 console.warn(e);
+
             }
 
             hls = null;
+
         }
 
 
         video.pause();
 
-        video.removeAttribute("src");
+        video.removeAttribute(
+            "src"
+        );
 
         video.load();
 
 
-        /*
-         * iOS / Safari:
-         *
-         * usa HLS nativo quando disponível.
-         */
+        /* ---------------------------------------------
+           HLS NATIVO
+           --------------------------------------------- */
 
         const nativeHls =
             video.canPlayType(
@@ -1558,26 +1756,32 @@
 
         if (nativeHls) {
 
-            video.src = url;
+            video.src =
+                url;
+
 
             try {
+
                 await video.play();
+
             } catch (e) {
+
                 console.log(
                     "Autoplay bloqueado pelo navegador.",
                     e
                 );
+
             }
 
+
             return;
+
         }
 
 
-        /*
-         * Chrome / Edge / Firefox etc.
-         *
-         * HLS.js quando suportado.
-         */
+        /* ---------------------------------------------
+           HLS.JS
+           --------------------------------------------- */
 
         if (
             typeof Hls !== "undefined" &&
@@ -1586,15 +1790,25 @@
 
             hls =
                 new Hls({
-                    enableWorker: true,
-                    lowLatencyMode: true,
-                    backBufferLength: 30
+                    enableWorker:
+                        true,
+
+                    lowLatencyMode:
+                        true,
+
+                    backBufferLength:
+                        30
                 });
 
 
-            hls.loadSource(url);
+            hls.loadSource(
+                url
+            );
 
-            hls.attachMedia(video);
+
+            hls.attachMedia(
+                video
+            );
 
 
             hls.on(
@@ -1606,6 +1820,7 @@
                         .catch(
                             () => {}
                         );
+
                 }
             );
 
@@ -1638,6 +1853,7 @@
                                     "HLS network error."
                                 );
 
+
                                 hls.startLoad();
 
                                 break;
@@ -1648,6 +1864,7 @@
                                 console.warn(
                                     "HLS media error."
                                 );
+
 
                                 hls.recoverMediaError();
 
@@ -1660,30 +1877,38 @@
                                     "Erro HLS fatal."
                                 );
 
+
                                 hls.destroy();
 
                                 break;
+
                         }
+
                     }
+
                 }
             );
 
 
             return;
+
         }
 
 
-        /*
-         * Último fallback.
-         */
+        /* ---------------------------------------------
+           FALLBACK
+           --------------------------------------------- */
 
-        video.src = url;
+        video.src =
+            url;
+
 
         video
             .play()
             .catch(
                 () => {}
             );
+
     }
 
 
@@ -1696,12 +1921,17 @@
         if (hls) {
 
             try {
+
                 hls.destroy();
+
             } catch (e) {
+
                 console.warn(e);
+
             }
 
             hls = null;
+
         }
 
 
@@ -1713,7 +1943,9 @@
 
         video.pause();
 
-        video.removeAttribute("src");
+        video.removeAttribute(
+            "src"
+        );
 
         video.load();
 
@@ -1725,6 +1957,7 @@
             .classList.add(
                 "hidden"
             );
+
     }
 
 </script>
