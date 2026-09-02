@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GG Player Web</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    body { background-color: #0d0f12; color: #e5e7eb; user-select: none; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+
+<div id="app" class="h-screen w-screen flex flex-col overflow-hidden">
+
+  <div v-if="!authorized" class="flex-1 flex flex-col justify-center items-center p-6 text-center">
+    <div class="bg-gray-900 border border-gray-800 p-8 rounded-2xl max-w-md w-full shadow-2xl">
+      <div class="w-16 h-16 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">!</div>
+      <h1 class="text-2xl font-bold text-white mb-2">Aguardando Ativação</h1>
+      <p class="text-gray-400 text-sm mb-6">Informe o ID abaixo ao seu provedor para ativar o acesso no seu iOS/Navegador.</p>
+      <div class="bg-gray-950 p-4 rounded-xl border border-gray-800 font-mono text-xl tracking-widest text-emerald-400 mb-4">
+        {{ deviceId }}
+      </div>
+      <button @click="checkDeviceStatus" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition">
+        Verificar Novamente
+      </button>
+    </div>
+  </div>
+
+  <template v-else>
+    <header class="h-14 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-4">
+      <div class="flex items-center gap-2">
+        <span class="text-emerald-500 font-black text-xl tracking-wider">GG</span>
+        <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded font-mono">WEB</span>
+      </div>
+      <input 
+        v-model="searchQuery" 
+        type="text" 
+        placeholder="Buscar canais, filmes, séries..." 
+        class="bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm w-48 sm:w-80 focus:outline-none focus:border-emerald-500 text-white"
+      />
+    </header>
+
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+      
+      <div v-if="currentStream" class="w-full md:w-2/3 bg-black flex flex-col justify-center relative">
+        <video id="videoPlayer" class="w-full h-full max-h-[60vh] md:max-h-full" controls autoplay></video>
+        <button @click="closePlayer" class="absolute top-4 right-4 bg-black/60 text-white p-2 rounded-full hover:bg-red-600">✕</button>
+      </div>
+
+      <div class="flex-1 flex flex-col overflow-hidden bg-gray-900">
+        <nav class="flex bg-gray-950 border-b border-gray-800 text-sm overflow-x-auto hide-scrollbar">
+          <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" 
+                  :class="['px-5 py-3 whitespace-nowrap font-medium transition', activeTab === tab.id ? 'text-emerald-400 border-b-2 border-emerald-500 bg-gray-900' : 'text-gray-400 hover:text-white']">
+            {{ tab.name }}
+          </button>
+        </nav>
+
+        <div class="flex-1 overflow-y-auto p-4 hide-scrollbar">
+          <div v-if="loading" class="flex justify-center items-center h-full text-gray-500">
+            Carregando conteúdo...
+          </div>
+          <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div v-for="item in filteredContent" :key="item.stream_id || item.series_id" 
+                 @click="playContent(item)"
+                 class="bg-gray-950 rounded-xl overflow-hidden border border-gray-800/60 hover:border-emerald-500/50 cursor-pointer transition group flex flex-col">
+              <div class="aspect-[2/3] bg-gray-900 relative overflow-hidden">
+                <img :src="item.stream_icon || item.cover" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" @error="handleImgError" />
+              </div>
+              <div class="p-2.5 flex-1 flex flex-col justify-between">
+                <h3 class="text-xs font-semibold text-gray-200 line-clamp-2">{{ item.name }}</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </template>
+
+</div>
+
+<script>
+// --- Configuração Firebase (Substitua pelos seus dados) ---
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  projectId: "SEU_PROJECT_ID",
+  firestoreUrl: "SEU_FIRESTORE_URL"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const { createApp, ref, onMounted, computed, watch } = Vue;
+
+createApp({
+  setup() {
+    const deviceId = ref('');
+    const authorized = ref(false);
+    const activeTab = ref('live');
+    const searchQuery = ref('');
+    const loading = ref(false);
+    const activeDns = ref('');
+    const credentials = ref({ username: '', password: '' });
+    const currentStream = ref(null);
+    const hls = ref(null);
+    const contentData = ref([]);
+
+    const tabs = [
+      { id: 'live', name: 'TV ao Vivo' },
+      { id: 'movies', name: 'Filmes' },
+      { id: 'series', name: 'Séries' },
+      { id: 'suggestions', name: 'Sugestões' },
+      { id: 'history', name: 'Histórico' }
+    ];
+
+    // 1. Identificação do Dispositivo
+    const getDeviceId = () => {
+      let id = localStorage.getItem('GG_DEVICE_ID');
+      if (!id) {
+        id = 'GG-' + Math.floor(100000 + Math.random() * 900000);
+        localStorage.setItem('GG_DEVICE_ID', id);
+      }
+      return id;
+    };
+
+    // 2. Consulta de Ativação no Firestore
+    const checkDeviceStatus = async () => {
+      deviceId.value = getDeviceId();
+      try {
+        const doc = await db.collection('devices').doc(deviceId.value).get();
+        if (doc.exists && doc.data().authorized) {
+          const data = doc.data();
+          authorized.value = true;
+          credentials.value = { username: data.username, password: data.password };
+          await resolveDnsMode(data);
+        } else {
+          authorized.value = false;
+        }
+      } catch (err) {
+        console.error("Erro na ativação:", err);
+      }
+    };
+
+    // Resolução de Failover/Modo de DNS
+    const resolveDnsMode = async (data) => {
+      if (data.mode === 'fixed') {
+        activeDns.value = data.fixed_url;
+      } else if (data.mode === 'dynamic' || data.mode === 'balance') {
+        // Exemplo: Buscar lista em repositório txt
+        activeDns.value = data.fixed_url; 
+      }
+      loadCategoryData();
+    };
+
+    // Filtro de Conteúdo Adulto
+    const isAdult = (name) => {
+      const regex = /(XXX|18\+|ADULTO|PORN|SEXO|EROTICO)/i;
+      return regex.test(name);
+    };
+
+    // Carregamento de Dados (com Fallback e Cache local)
+    const loadCategoryData = async () => {
+      loading.value = true;
+      const endpoint = `${activeDns.value}/player_api.php?username=${credentials.value.username}&password=${credentials.value.password}&action=get_live_streams`;
+      
+      try {
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        // Filtra conteúdo adulto por padrão
+        contentData.value = data.filter(item => !isAdult(item.name));
+      } catch (e) {
+        console.error("Erro ao carregar dados", e);
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    // Configuração do Player com HLS.js
+    const playContent = (item) => {
+      currentStream.value = item;
+      const streamUrl = `${activeDns.value}/live/${credentials.value.username}/${credentials.value.password}/${item.stream_id}.m3u8`;
+
+      setTimeout(() => {
+        const video = document.getElementById('videoPlayer');
+        if (Hls.isSupported()) {
+          if (hls.value) hls.value.destroy();
+          
+          hls.value = new Hls({
+            maxBufferLength: 50, // Buffer agressivo de 50 segundos
+            maxMaxBufferLength: 100,
+            manifestLoadingTimeOut: 20000,
+            fragLoadingTimeOut: 20000,
+            skipBufferHole: true // Ignora descontinuidades
+          });
+
+          hls.value.loadSource(streamUrl);
+          hls.value.attachMedia(video);
+          hls.value.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          // Fallback para Safari / iOS Nativo
+          video.src = streamUrl;
+          video.play();
+        }
+      }, 100);
+    };
+
+    const closePlayer = () => {
+      if (hls.value) hls.value.destroy();
+      currentStream.value = null;
+    };
+
+    const filteredContent = computed(() => {
+      if (!searchQuery.value) return contentData.value;
+      return contentData.value.filter(i => i.name.toLowerCase().includes(searchQuery.value.toLowerCase()));
+    });
+
+    const handleImgError = (e) => {
+      e.target.src = 'https://via.placeholder.com/300x450/111827/ffffff?text=Sem+Imagem';
+    };
+
+    onMounted(() => {
+      checkDeviceStatus();
+    });
+
+    return {
+      deviceId, authorized, activeTab, tabs, searchQuery, loading,
+      filteredContent, currentStream, checkDeviceStatus, playContent,
+      closePlayer, handleImgError
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
