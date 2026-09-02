@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Web Player Ultra</title>
+    <title>Web Player IPTV</title>
     <style>
         *, *::before, *::after {
             box-sizing: border-box;
@@ -11,7 +11,6 @@
             -webkit-touch-callout: none;
         }
 
-        /* Otimizações Globais de Renderização */
         html, body {
             margin: 0;
             padding: 0;
@@ -21,7 +20,6 @@
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden;
-            background-attachment: fixed;
         }
 
         body {
@@ -31,7 +29,6 @@
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
-        /* Camadas Aceleradas por GPU */
         .layer-gpu {
             transform: translateZ(0);
             will-change: transform, opacity;
@@ -39,6 +36,9 @@
             -webkit-backface-visibility: hidden;
         }
 
+        .hidden { display: none !important; }
+
+        /* TELA DE LOGIN */
         .container {
             background-color: #1e1e1e;
             padding: 30px;
@@ -50,12 +50,7 @@
             contain: content;
         }
 
-        .logo {
-            max-width: 120px;
-            height: auto;
-            margin-bottom: 15px;
-            contain: strict;
-        }
+        .logo { max-width: 120px; height: auto; margin-bottom: 15px; }
 
         .id-box {
             display: flex;
@@ -66,9 +61,8 @@
             padding: 10px;
             border-radius: 8px;
             margin: 15px 0;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-family: monospace;
             font-size: 1.1em;
-            contain: inline-size;
         }
 
         button {
@@ -84,56 +78,168 @@
             touch-action: manipulation;
         }
 
-        .btn-copy {
-            background-color: #333333;
-            width: auto;
-            padding: 6px 12px;
-            font-size: 0.9em;
-        }
+        .btn-copy { background-color: #333333; width: auto; padding: 6px 12px; font-size: 0.9em; }
 
-        /* Otimização de Troca de Telas (Evita Reflow) */
-        .hidden {
-            display: none !important;
-        }
-
+        /* PAINEL PRINCIPAL IPTV */
         #mainScreen {
             width: 100%;
             height: 100vh;
-            padding: 20px;
             display: flex;
             flex-direction: column;
+            background-color: #0d0d0d;
         }
 
         .header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background-color: #1e1e1e;
+            background-color: #1a1a1a;
             padding: 10px 20px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header .logo { max-width: 60px; margin-bottom: 0; }
+
+        /* MENU DE NAVEGAÇÃO */
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background-color: #141414;
+            padding: 10px;
+            border-bottom: 1px solid #222;
+        }
+
+        .tab-btn {
+            background: #222;
+            color: #aaa;
+            border: 1px solid #333;
+            padding: 10px 20px;
+            border-radius: 20px;
+            width: auto;
+            font-size: 0.95em;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        /* ÁREA DE CONTEÚDO */
+        .content-area {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* CATEGORIAS */
+        .sidebar {
+            width: 240px;
+            background-color: #121212;
+            border-right: 1px solid #222;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px;
+        }
+
+        .cat-item {
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 0.9em;
+            margin-bottom: 4px;
+        }
+
+        .cat-item:hover, .cat-item.active {
+            background-color: #222;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        /* GRID DE MÍDIA */
+        .media-grid {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+            align-content: start;
+        }
+
+        .media-card {
+            background-color: #1a1a1a;
             border-radius: 8px;
-            contain: content;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-align: center;
         }
 
-        .header .logo {
-            max-width: 80px;
-            margin-bottom: 0;
+        .media-card:hover { transform: scale(1.03); }
+
+        .media-card img {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            background-color: #222;
+            display: block;
         }
 
-        .player-container {
-            margin-top: 20px;
+        .media-card .title {
+            padding: 8px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* PLAYER DE VÍDEO OVERLAY */
+        #playerModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
             display: flex;
             flex-direction: column;
+        }
+
+        .player-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-close {
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
             align-items: center;
             justify-content: center;
-            flex: 1;
-            contain: strict;
+            font-size: 1.2em;
         }
 
         video {
             width: 100%;
-            max-width: 800px;
-            border-radius: 8px;
-            background: #000000;
+            height: 100%;
             object-fit: contain;
         }
 
@@ -159,6 +265,7 @@
 </head>
 <body>
 
+<!-- TELA DE LOGIN -->
 <div class="container layer-gpu" id="loginScreen">
     <img src="logo_gg.png" alt="Logo GG" class="logo" loading="eager" decoding="async">
     <h2>Acesso ao Player</h2>
@@ -172,17 +279,41 @@
     <button id="btnEntrar">Entrar</button>
 </div>
 
+<!-- TELA PRINCIPAL IPTV -->
 <div id="mainScreen" class="hidden layer-gpu">
     <div class="header">
-        <img src="logo_gg.png" alt="Logo GG" class="logo" loading="eager" decoding="async">
-        <h2>Painel Principal</h2>
+        <div class="header-left">
+            <img src="logo_gg.png" alt="Logo GG" class="logo">
+            <span style="font-weight: bold;">GG Player</span>
+        </div>
+        <span id="userInfo" style="font-size: 0.85em; color: #888;">ID Conectado</span>
     </div>
-    <div class="player-container">
-        <video id="mediaPlayer" controls playsinline webkit-playsinline preload="metadata">
-            <source src="" type="video/mp4">
-            Seu navegador não suporta este vídeo.
-        </video>
+
+    <!-- ABAS PRINCIPAIS -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="carregarAba('tv')">📺 TV ao Vivo</button>
+        <button class="tab-btn" onclick="carregarAba('filmes')">🎬 Filmes</button>
+        <button class="tab-btn" onclick="carregarAba('series')">🍿 Séries</button>
     </div>
+
+    <!-- ÁREA DE NAVEGAÇÃO -->
+    <div class="content-area">
+        <div class="sidebar" id="categoryList">
+            <!-- Categorias dinâmicas aqui -->
+        </div>
+        <div class="media-grid" id="mediaGrid">
+            <!-- Cards de filmes/canais aqui -->
+        </div>
+    </div>
+</div>
+
+<!-- PLAYER REPRODUTOR -->
+<div id="playerModal" class="hidden">
+    <div class="player-header">
+        <span id="playerTitle">Reproduzindo</span>
+        <button class="btn-close" onclick="fecharPlayer()">✕</button>
+    </div>
+    <video id="mediaPlayer" controls playsinline webkit-playsinline preload="metadata"></video>
 </div>
 
 <a href="https://wa.me/5584998457394?text=Olá,%20preciso%20de%20suporte%20com%20o%20Web%20Player." target="_blank" class="btn-suporte layer-gpu">
@@ -195,97 +326,118 @@
     let currentID = "";
     const loginScreen = document.getElementById("loginScreen");
     const mainScreen = document.getElementById("mainScreen");
-    const deviceIdEl = document.getElementById("deviceId");
+    const playerModal = document.getElementById("playerModal");
     const mediaPlayer = document.getElementById("mediaPlayer");
 
-    // Persistência com fallback rápido
-    function obterIDLocal() {
-        return localStorage.getItem("device_id");
+    // Dados Exemplo de Estrutura IPTV
+    const dadosIPTV = {
+        tv: {
+            categorias: ["Abertos", "Esportes", "Filmes e Séries"],
+            itens: [
+                { titulo: "Canal Exemplo 1", capa: "", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", cat: "Abertos" },
+                { titulo: "Canal Esporte 24h", capa: "", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", cat: "Esportes" }
+            ]
+        },
+        filmes: {
+            categorias: ["Ação", "Comédia", "Lançamentos"],
+            itens: [
+                { titulo: "Filme Demonstração", capa: "https://via.placeholder.com/150x225?text=Filme", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", cat: "Ação" }
+            ]
+        },
+        series: {
+            categorias: ["Drama", "Animes"],
+            itens: [
+                { titulo: "Série Exemplo Ep 1", capa: "https://via.placeholder.com/150x225?text=Serie", url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4", cat: "Drama" }
+            ]
+        }
+    };
+
+    let abaAtual = 'tv';
+
+    function obterIDLocal() { return localStorage.getItem("device_id"); }
+    function salvarIDLocal(id) { localStorage.setItem("device_id", id); }
+
+    function inicializarID() {
+        currentID = obterIDLocal();
+        if (!currentID) {
+            currentID = "GG-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+            salvarIDLocal(currentID);
+        }
+        document.getElementById("deviceId").textContent = currentID;
     }
 
-    function salvarIDLocal(id) {
-        localStorage.setItem("device_id", id);
+    function copiarID() {
+        navigator.clipboard.writeText(currentID).then(() => alert("ID copiado!"));
     }
 
-    function lerIndexedDB() {
-        return new Promise(resolve => {
-            const req = indexedDB.open("GGPlayerDB", 1);
-            req.onupgradeneeded = e => e.target.result.createObjectStore("config");
-            req.onsuccess = e => {
-                const db = e.target.result;
-                const tx = db.transaction("config", "readonly");
-                const getReq = tx.objectStore("config").get("device_id");
-                getReq.onsuccess = () => resolve(getReq.result || null);
-                getReq.onerror = () => resolve(null);
-            };
-            req.onerror = () => resolve(null);
+    function verificarEAbrir() {
+        loginScreen.classList.add("hidden");
+        mainScreen.classList.remove("hidden");
+        carregarAba('tv');
+    }
+
+    function carregarAba(tipo) {
+        abaAtual = tipo;
+        
+        // Atualiza abas visuais
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // Carrega Categorias
+        const sidebar = document.getElementById("categoryList");
+        sidebar.innerHTML = `<div class="cat-item active" onclick="filtrarCategoria('todas')">Todas as Categorias</div>`;
+        
+        dadosIPTV[tipo].categorias.forEach(cat => {
+            sidebar.innerHTML += `<div class="cat-item" onclick="filtrarCategoria('${cat}')">${cat}</div>`;
+        });
+
+        renderizarItens(dadosIPTV[tipo].itens);
+    }
+
+    function renderizarItens(itens) {
+        const grid = document.getElementById("mediaGrid");
+        grid.innerHTML = "";
+
+        itens.forEach(item => {
+            const capa = item.capa || "https://via.placeholder.com/150x225?text=Sem+Capa";
+            grid.innerHTML += `
+                <div class="media-card" onclick="abrirPlayer('${item.titulo}', '${item.url}')">
+                    <img src="${capa}" alt="${item.titulo}" loading="lazy">
+                    <div class="title">${item.titulo}</div>
+                </div>
+            `;
         });
     }
 
-    function salvarIndexedDB(id) {
-        const req = indexedDB.open("GGPlayerDB", 1);
-        req.onupgradeneeded = e => e.target.result.createObjectStore("config");
-        req.onsuccess = e => {
-            const db = e.target.result;
-            const tx = db.transaction("config", "readwrite");
-            tx.objectStore("config").put(id, "device_id");
-        };
-    }
+    function filtrarCategoria(cat) {
+        document.querySelectorAll('.cat-item').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
 
-    async function inicializarID() {
-        currentID = obterIDLocal();
-        if (!currentID) {
-            currentID = await lerIndexedDB();
-        }
-        if (!currentID) {
-            currentID = "GG-" + Math.random().toString(36).substring(2, 9).toUpperCase();
-        }
-        salvarIDLocal(currentID);
-        salvarIndexedDB(currentID);
-        deviceIdEl.textContent = currentID;
-    }
-
-    // Copiar sem travar a UI
-    function copiarID() {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(currentID).then(() => alert("ID copiado!"));
+        if (cat === 'todas') {
+            renderizarItens(dadosIPTV[abaAtual].itens);
         } else {
-            const el = document.createElement('textarea');
-            el.value = currentID;
-            el.style.position = 'absolute';
-            el.style.left = '-9999px';
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-            alert("ID copiado!");
+            const filtrados = dadosIPTV[abaAtual].itens.filter(i => i.cat === cat);
+            renderizarItens(filtrados);
         }
     }
 
-    // Ativação limpa de mídia e troca de telas
-    function verificarEAbrir() {
-        mediaPlayer.load(); // Desbloqueia áudio/vídeo no Safari iOS
-        loginScreen.classList.add("hidden");
-        mainScreen.classList.remove("hidden");
+    function abrirPlayer(titulo, url) {
+        document.getElementById("playerTitle").textContent = titulo;
+        mediaPlayer.src = url;
+        playerModal.classList.remove("hidden");
+        mediaPlayer.play();
     }
 
-    // Event Listeners diretos (Evita atraso de clique no iOS)
-    document.getElementById("btnCopiar").addEventListener("click", copiarID, { passive: true });
-    document.getElementById("btnEntrar").addEventListener("click", verificarEAbrir);
-
-    // Gestão de memória do vídeo para iOS
-    window.addEventListener("pagehide", () => {
+    function fecharPlayer() {
         mediaPlayer.pause();
         mediaPlayer.removeAttribute("src");
-        mediaPlayer.load();
-    });
-
-    // Inicialização sem bloquear a renderização
-    if (window.requestIdleCallback) {
-        requestIdleCallback(inicializarID);
-    } else {
-        setTimeout(inicializarID, 0);
+        playerModal.classList.add("hidden");
     }
+
+    document.getElementById("btnCopiar").addEventListener("click", copiarID);
+    document.getElementById("btnEntrar").addEventListener("click", verificarEAbrir);
+
+    inicializarID();
 </script>
 
 </body>
