@@ -519,7 +519,7 @@
 
 
     /* =====================================================
-       CONFIGURAÇÃO DO PROXY
+       CLOUDFLARE WORKER
        ===================================================== */
 
     const PROXY_URL =
@@ -638,7 +638,7 @@
 
 
             /* ---------------------------------------------
-               2. URL DA LISTA
+               2. PEGAR EXATAMENTE A URL DO FIRESTORE
                --------------------------------------------- */
 
             const m3uUrl =
@@ -652,7 +652,12 @@
 
 
             /* ---------------------------------------------
-               3. MONTAR URL DO CLOUDFLARE WORKER
+               3. ENVIAR A URL COMPLETA AO WORKER
+               
+               encodeURIComponent é FUNDAMENTAL.
+               Ele transforma os & da URL M3U em %26,
+               impedindo que sejam interpretados como
+               parâmetros do próprio Worker.
                --------------------------------------------- */
 
             const linkProxy =
@@ -661,6 +666,17 @@
                 encodeURIComponent(
                     m3uUrl
                 );
+
+
+            console.log(
+                "GG PLAYER - URL original:",
+                m3uUrl
+            );
+
+            console.log(
+                "GG PLAYER - URL do Worker:",
+                linkProxy
+            );
 
 
             /* ---------------------------------------------
@@ -673,6 +689,7 @@
                     {
                         method: "GET",
                         cache: "no-store",
+                        redirect: "follow",
                         headers: {
                             "Accept":
                                 "audio/x-mpegurl, application/x-mpegURL, text/plain, */*"
@@ -681,28 +698,38 @@
                 );
 
 
-            if (!res.ok) {
-
-                const errTxt =
-                    await res.text();
-
-                throw new Error(
-                    errTxt ||
-                    (
-                        "Proxy retornou HTTP " +
-                        res.status
-                    )
-                );
-
-            }
-
-
             /* ---------------------------------------------
-               5. LER TEXTO
+               5. LER RESPOSTA
                --------------------------------------------- */
 
             const text =
                 await res.text();
+
+
+            console.log(
+                "GG PLAYER - HTTP:",
+                res.status
+            );
+
+            console.log(
+                "GG PLAYER - Tamanho:",
+                text.length
+            );
+
+
+            if (!res.ok) {
+
+                throw new Error(
+                    "Worker retornou HTTP " +
+                    res.status +
+                    ". " +
+                    text.substring(
+                        0,
+                        500
+                    )
+                );
+
+            }
 
 
             if (
@@ -718,16 +745,32 @@
 
 
             /* ---------------------------------------------
-               6. PROCESSAR LISTA
+               6. VERIFICAR SE REALMENTE É M3U
+               --------------------------------------------- */
+
+            if (
+                !/#EXTM3U/i.test(
+                    text
+                ) &&
+                !/#EXTINF:/i.test(
+                    text
+                )
+            ) {
+
+                throw new Error(
+                    "O servidor respondeu, mas o conteúdo recebido não é uma lista M3U válida."
+                );
+
+            }
+
+
+            /* ---------------------------------------------
+               7. PROCESSAR LISTA
                --------------------------------------------- */
 
             status.textContent =
                 "Processando lista...";
 
-
-            /* ---------------------------------------------
-               7. PARSER
-               --------------------------------------------- */
 
             const totalCarregado =
                 parseM3U(
