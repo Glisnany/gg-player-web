@@ -1,16 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>GG Player Web</title>
+    
+    <!-- Hls.js para reprodução fluida no iOS Safari / Windows -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .layer-gpu {
+            transform: translateZ(0);
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .hidden { display: none !important; }
+
+        /* TELA DE LOGIN / STATUS */
+        .container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 90%;
+            contain: content;
+        }
+
+        .logo { max-width: 120px; height: auto; margin-bottom: 15px; }
+
+        .id-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            width: 100%;
+            touch-action: manipulation;
+        }
+
+        button:hover { background-color: #0056b3; }
+        .btn-copy { background-color: #333333; width: auto; padding: 6px 12px; font-size: 0.9em; }
+
+        .status-msg {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #ff9800;
+        }
+
+        /* TELA PRINCIPAL IPTV */
+        #mainScreen {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #0d0d0d;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #1a1a1a;
+            padding: 10px 20px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header .logo { max-width: 60px; margin-bottom: 0; }
+
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background-color: #141414;
+            padding: 10px;
+            border-bottom: 1px solid #222;
+        }
+
+        .tab-btn {
+            background: #222;
+            color: #aaa;
+            border: 1px solid #333;
+            padding: 10px 20px;
+            border-radius: 20px;
+            width: auto;
+            font-size: 0.95em;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 240px;
+            background-color: #121212;
+            border-right: 1px solid #222;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px;
+        }
+
+        .cat-item {
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 0.9em;
+            margin-bottom: 4px;
+        }
+
+        .cat-item:hover, .cat-item.active {
+            background-color: #222;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        .media-grid {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+            align-content: start;
+        }
+
+        .media-card {
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-align: center;
+        }
+
+        .media-card:hover { transform: scale(1.03); }
+
+        .media-card img {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            background-color: #222;
+            display: block;
+        }
+
+        .media-card .title {
+            padding: 8px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* PLAYER OVERLAY */
+        #playerModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-close {
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .btn-suporte {
+            position: fixed;
+            bottom: calc(15px + env(safe-area-inset-bottom));
+            right: calc(15px + env(safe-area-inset-right));
+            background-color: #25D366;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            z-index: 999;
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN / ATIVAÇÃO -->
+<div class="container layer-gpu" id="loginScreen">
+    <img src="logo_gg.png" alt="Logo GG" class="logo" loading="eager" decoding="async">
+    <h2>Acesso ao Player</h2>
+    <p>Seu ID do dispositivo:</p>
+    
+    <div class="id-box">
+        <span id="deviceId">Carregando...</span>
+        <button class="btn-copy" id="btnCopiar">Copiar</button>
+    </div>
+
+    <button id="btnEntrar">Entrar</button>
+    <div id="statusMsg" class="status-msg"></div>
+</div>
+
+<!-- TELA PRINCIPAL IPTV -->
+<div id="mainScreen" class="hidden layer-gpu">
+    <div class="header">
+        <div class="header-left">
+            <img src="logo_gg.png" alt="Logo GG" class="logo">
+            <span style="font-weight: bold;">GG Player</span>
+        </div>
+        <span id="userInfo" style="font-size: 0.85em; color: #888;">ID Conectado</span>
+    </div>
+
+    <!-- ABAS PRINCIPAIS -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="carregarAba('tv')">📺 TV ao Vivo</button>
+        <button class="tab-btn" onclick="carregarAba('filmes')">🎬 Filmes</button>
+        <button class="tab-btn" onclick="carregarAba('series')">🍿 Séries</button>
+    </div>
+
+    <div class="content-area">
+        <div class="sidebar" id="categoryList"></div>
+        <div class="media-grid" id="mediaGrid"></div>
+    </div>
+</div>
+
+<!-- PLAYER OVERLAY -->
+<div id="playerModal" class="hidden">
+    <div class="player-header">
+        <span id="playerTitle">Reproduzindo</span>
+        <button class="btn-close" onclick="fecharPlayer()">✕</button>
+    </div>
+    <video id="mediaPlayer" controls playsinline webkit-playsinline preload="metadata"></video>
+</div>
+
+<a href="https://wa.me/5584998457394?text=Olá,%20preciso%20de%20suporte%20com%20o%20Web%20Player." target="_blank" class="btn-suporte layer-gpu">
+    💬 Suporte
+</a>
+
 <script>
     'use strict';
 
     // ==========================================
-    // CONFIGURAÇÃO DO FIREBASE
+    // CONFIGURAÇÃO DO FIREBASE (SOMENTE LEITURA)
     // ==========================================
     const firebaseConfig = {
-        apiKey: "SUA_API_KEY",
-        authDomain: "SEU_PROJECT_ID.firebaseapp.com",
-        projectId: "SEU_PROJECT_ID",
-        storageBucket: "SEU_PROJECT_ID.appspot.com",
-        messagingSenderId: "SEU_SENDER_ID",
-        appId: "SEU_APP_ID"
+        apiKey: "AIzaSyC06Bn7C-llo0B0vIfE7Nxq5vkEhBk2U-w",
+        authDomain: "gg-gestao.firebaseapp.com",
+        projectId: "gg-gestao",
+        storageBucket: "gg-gestao.firebasestorage.app",
+        messagingSenderId: "499414114342",
+        appId: "1:499414114342:web:8d8b9e4f89fff9179706e7"
     };
 
     if (!firebase.apps.length) {
@@ -50,70 +378,66 @@
     }
 
     // ==========================================
-    // LEITURA DO FIREBASE & M3U PARSER
+    // LEITURA E VALIDAÇÃO (PASSO A PASSO)
     // ==========================================
     async function iniciarConexao() {
-        statusMsg.textContent = "Verificando autorização...";
-        console.log("Iniciando verificação para o ID:", currentID);
+        statusMsg.textContent = "Consultando dispositivo...";
 
         try {
             const docRef = db.collection("devices").doc(currentID);
             const docSnap = await docRef.get();
 
+            // 1. Verifica se o documento existe no banco
             if (!docSnap.exists) {
-                console.log("Documento não existe. Criando documento pendente...");
-                await docRef.set({ 
-                    authorized: false, 
-                    fixed_url: "",
-                    mode: "fixed" 
-                }, { merge: true });
-                statusMsg.textContent = "ID pendente de ativação no painel.";
+                statusMsg.textContent = "ID não cadastrado no painel. Cadastre o ID exibido acima.";
                 return;
             }
 
             const data = docSnap.data();
-            console.log("Dados retornados do Firestore:", data);
 
-            // Validação explícita dos campos
+            // 2. Verifica permissão de acesso (authorized)
             if (data.authorized !== true) {
-                statusMsg.textContent = "ID pendente de ativação (authorized=false).";
+                statusMsg.textContent = "Acesso negado: Dispositivo não autorizado.";
                 return;
             }
 
-            // Garante leitura flexível do modo ("fixed" ou "FIXED")
+            // 3. Verifica o modo de operação (mode)
             const mode = (data.mode || "").toLowerCase();
             if (mode !== "fixed") {
-                statusMsg.textContent = `Modo '${data.mode}' não suportado. Altere para 'fixed'.`;
+                statusMsg.textContent = `Modo '${data.mode}' não é suportado pelo Web Player.`;
                 return;
             }
 
+            // 4. Obtém o link M3U (fixed_url)
             const m3uUrl = data.fixed_url ? data.fixed_url.trim() : "";
             if (!m3uUrl) {
-                statusMsg.textContent = "Campo fixed_url está vazio no Firebase.";
+                statusMsg.textContent = "Nenhuma lista M3U (fixed_url) associada a este dispositivo.";
                 return;
             }
 
-            statusMsg.textContent = "Carregando lista M3U...";
-            console.log("Baixando M3U de:", m3uUrl);
+            statusMsg.textContent = "Baixando lista de canais...";
 
-            // Download da lista com suporte a CORS
+            // 5. Faz o download do arquivo .m3u ou .m3u8
             const res = await fetch(m3uUrl);
-            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+            if (!res.ok) throw new Error(`Falha no download (HTTP ${res.status})`);
             
             const m3uText = await res.text();
             parseM3U(m3uText);
 
-            statusMsg.textContent = "Lista carregada!";
+            statusMsg.textContent = "Carregado com sucesso!";
             loginScreen.classList.add("hidden");
             mainScreen.classList.remove("hidden");
             carregarAba('tv');
 
         } catch (error) {
-            console.error("Erro na conexão:", error);
-            statusMsg.textContent = "Erro de conexão/CORS ao baixar a lista ou acessar o Firebase.";
+            console.error("Erro na leitura:", error);
+            statusMsg.textContent = "Erro de conexão ao carregar a lista M3U ou acessar o Firebase.";
         }
     }
 
+    // ==========================================
+    // PARSER DA LISTA M3U
+    // ==========================================
     function parseM3U(content) {
         playlistData = { tv: [], filmes: [], series: [] };
         const lines = content.split('\n');
@@ -238,3 +562,6 @@
 
     inicializarID();
 </script>
+
+</body>
+</html>
