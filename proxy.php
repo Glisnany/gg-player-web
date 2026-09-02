@@ -1,314 +1,131 @@
 <?php
 
-/*
- * ============================================================
- * GG PLAYER WEB - PROXY M3U
- * ============================================================
- *
- * Este arquivo serve somente para buscar a lista M3U
- * cadastrada no Firestore e entregá-la ao navegador.
- *
- * Aceita URL HTTP ou HTTPS.
- * Não altera a URL recebida.
- *
- * ============================================================
- */
-
-
-/* ------------------------------------------------------------
-   CORS
-   ------------------------------------------------------------ */
-
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Accept");
+header("Access-Control-Allow-Headers: *");
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
-
-
-/* ------------------------------------------------------------
-   OPTIONS
-   ------------------------------------------------------------ */
+header("Content-Type: text/plain; charset=utf-8");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
 
-
-/* ------------------------------------------------------------
-   SOMENTE GET
-   ------------------------------------------------------------ */
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    header("Content-Type: text/plain; charset=utf-8");
-    echo "Método não permitido.";
-    exit;
-}
-
-
-/* ------------------------------------------------------------
-   URL
-   ------------------------------------------------------------ */
-
 if (!isset($_GET['url'])) {
     http_response_code(400);
-    header("Content-Type: text/plain; charset=utf-8");
-    echo "Parâmetro URL ausente.";
+    echo "ERRO: parâmetro url ausente.";
     exit;
 }
-
 
 $url = trim($_GET['url']);
 
-
-/* ------------------------------------------------------------
-   VALIDAR URL
-   ------------------------------------------------------------ */
-
 if ($url === '') {
     http_response_code(400);
-    header("Content-Type: text/plain; charset=utf-8");
-    echo "URL vazia.";
+    echo "ERRO: URL vazia.";
     exit;
 }
-
-
-/*
- * O GG Player trabalha com HTTP e HTTPS.
- */
 
 if (!preg_match('/^https?:\/\/.+/i', $url)) {
     http_response_code(400);
-    header("Content-Type: text/plain; charset=utf-8");
-    echo "Somente URLs HTTP ou HTTPS são permitidas.";
+    echo "ERRO: somente HTTP e HTTPS são permitidos.";
     exit;
 }
 
-
-/* ------------------------------------------------------------
-   CURL
-   ------------------------------------------------------------ */
-
 $ch = curl_init();
 
+curl_setopt_array($ch, [
 
-curl_setopt_array(
-    $ch,
-    [
+    CURLOPT_URL => $url,
 
-        CURLOPT_URL =>
-            $url,
+    CURLOPT_RETURNTRANSFER => true,
 
-        CURLOPT_RETURNTRANSFER =>
-            true,
+    CURLOPT_FOLLOWLOCATION => true,
 
-        CURLOPT_FOLLOWLOCATION =>
-            true,
+    CURLOPT_MAXREDIRS => 10,
 
-        CURLOPT_MAXREDIRS =>
-            10,
+    CURLOPT_CONNECTTIMEOUT => 20,
 
-        CURLOPT_CONNECTTIMEOUT =>
-            15,
+    CURLOPT_TIMEOUT => 90,
 
-        CURLOPT_TIMEOUT =>
-            60,
+    CURLOPT_ENCODING => "",
 
-        /*
-         * Algumas listas ficam comprimidas.
-         */
-        CURLOPT_ENCODING =>
-            "",
+    CURLOPT_USERAGENT =>
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
 
-        /*
-         * User-Agent mais semelhante
-         * a um navegador real.
-         */
-        CURLOPT_USERAGENT =>
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1",
+    CURLOPT_HTTPHEADER => [
+        "Accept: audio/x-mpegurl, application/x-mpegURL, text/plain, */*",
+        "Connection: close"
+    ],
 
-        /*
-         * Aceitar M3U/texto.
-         */
-        CURLOPT_HTTPHEADER =>
-            [
-                "Accept: audio/x-mpegurl, application/x-mpegURL, text/plain, */*",
-                "Connection: close"
-            ],
+    CURLOPT_SSL_VERIFYPEER => false,
 
-        /*
-         * Alguns servidores antigos de IPTV
-         * apresentam certificado problemático.
-         *
-         * Mantido compatível com a versão anterior.
-         */
-        CURLOPT_SSL_VERIFYPEER =>
-            false,
+    CURLOPT_SSL_VERIFYHOST => false,
 
-        CURLOPT_SSL_VERIFYHOST =>
-            false,
+]);
 
-    ]
-);
+$content = curl_exec($ch);
 
+$curlError = curl_error($ch);
+$curlErrno = curl_errno($ch);
 
-/* ------------------------------------------------------------
-   EXECUTAR
-   ------------------------------------------------------------ */
-
-$content =
-    curl_exec($ch);
-
-
-$curlError =
-    curl_error($ch);
-
-
-$curlErrorNumber =
-    curl_errno($ch);
-
-
-$httpCode =
-    curl_getinfo(
-        $ch,
-        CURLINFO_HTTP_CODE
-    );
-
-
-$contentType =
-    curl_getinfo(
-        $ch,
-        CURLINFO_CONTENT_TYPE
-    );
-
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+$finalUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+$redirectCount = curl_getinfo($ch, CURLINFO_REDIRECT_COUNT);
 
 curl_close($ch);
 
 
-/* ------------------------------------------------------------
-   ERRO CURL
-   ------------------------------------------------------------ */
-
+/*
+ * Falha de conexão / cURL
+ */
 if ($content === false) {
 
     http_response_code(502);
 
-    header(
-        "Content-Type: text/plain; charset=utf-8"
-    );
-
-    echo
-        "Falha ao baixar a lista M3U." .
-        "\nCódigo cURL: " .
-        $curlErrorNumber .
-        "\nErro: " .
-        $curlError;
+    echo "===== ERRO CURL =====\n";
+    echo "Código: " . $curlErrno . "\n";
+    echo "Mensagem: " . $curlError . "\n";
+    echo "URL: " . $url . "\n";
 
     exit;
 }
 
-
-/* ------------------------------------------------------------
-   ERRO HTTP
-   ------------------------------------------------------------ */
-
-if (
-    $httpCode < 200 ||
-    $httpCode >= 400
-) {
-
-    http_response_code(502);
-
-    header(
-        "Content-Type: text/plain; charset=utf-8"
-    );
-
-    echo
-        "Servidor da lista retornou HTTP " .
-        $httpCode;
-
-    exit;
-}
-
-
-/* ------------------------------------------------------------
-   LISTA VAZIA
-   ------------------------------------------------------------ */
-
-if (
-    trim($content) === ''
-) {
-
-    http_response_code(502);
-
-    header(
-        "Content-Type: text/plain; charset=utf-8"
-    );
-
-    echo "O servidor retornou uma lista vazia.";
-
-    exit;
-}
-
-
-/* ------------------------------------------------------------
-   UTF-8
-   ------------------------------------------------------------ */
 
 /*
- * Não usamos mb_detect_encoding() obrigatoriamente,
- * pois alguns servidores PHP não têm mbstring habilitado.
- *
- * Isso evita um possível erro fatal no proxy.
+ * Mostra informações recebidas.
+ * Isso será útil somente para diagnóstico.
  */
-
-if (
-    function_exists('mb_convert_encoding')
-) {
-
-    $content =
-        mb_convert_encoding(
-            $content,
-            'UTF-8',
-            'UTF-8, ISO-8859-1, Windows-1252'
-        );
-
-} else {
-
-    /*
-     * Remove BOM caso exista.
-     */
-    $content =
-        preg_replace(
-            '/^\xEF\xBB\xBF/',
-            '',
-            $content
-        );
-}
+echo "===== DIAGNÓSTICO PROXY =====\n";
+echo "HTTP: " . $httpCode . "\n";
+echo "Content-Type: " . ($contentType ?: "não informado") . "\n";
+echo "Redirecionamentos: " . $redirectCount . "\n";
+echo "URL final: " . ($finalUrl ?: "não informado") . "\n";
+echo "Tamanho recebido: " . strlen($content) . " bytes\n";
+echo "==============================\n\n";
 
 
-/* ------------------------------------------------------------
-   CABEÇALHOS DE RESPOSTA
-   ------------------------------------------------------------ */
+/*
+ * Mostra o começo da resposta.
+ *
+ * Se for uma M3U, deveremos enxergar algo como:
+ *
+ * #EXTM3U
+ * #EXTINF:...
+ * http://...
+ *
+ * Se vier HTML ou mensagem de erro,
+ * vamos enxergar aqui também.
+ */
+$previewLength = 5000;
 
-header(
-    "Content-Type: audio/x-mpegurl; charset=utf-8"
+$preview = substr(
+    $content,
+    0,
+    $previewLength
 );
 
-header(
-    "Content-Length: " .
-    strlen($content)
-);
-
-
-/* ------------------------------------------------------------
-   ENTREGAR M3U
-   ------------------------------------------------------------ */
-
-echo $content;
-
-exit;
+echo $preview;
 
 ?>
