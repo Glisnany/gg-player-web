@@ -107,13 +107,15 @@
             document.getElementById("mainScreen").classList.remove("hidden");
             carregarAba('tv');
         } catch (e) {
-            status.textContent = "Erro ao ler a lista M3U. Verifique a URL cadastrada.";
+            status.textContent = "Erro ao ler a lista M3U. Verifique se o proxy.php está rodando.";
         }
     };
 
     function parseM3U(content) {
         playlist = { tv: [], filmes: [], series: [] };
-        const lines = content.split('\n');
+        
+        // Trata quebras de linha tanto \r\n (Windows) quanto \n (Linux/Mac)
+        const lines = content.replace(/\r/g, '').split('\n');
         let currentItem = null;
 
         for (let i = 0; i < lines.length; i++) {
@@ -131,7 +133,7 @@
                 const group = groupMatch ? groupMatch[1] : "Geral";
 
                 currentItem = { name, logo, group };
-            } else if ((line.startsWith('http://') || line.startsWith('https://')) && currentItem) {
+            } else if (line.startsWith('http') && currentItem) {
                 currentItem.url = line;
                 const g = currentItem.group.toUpperCase();
                 const u = line.toLowerCase();
