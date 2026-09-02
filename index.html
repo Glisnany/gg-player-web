@@ -81,9 +81,32 @@
     let abaAtual = 'tv';
     let hls = null;
 
+    async function baixarLista(urlOriginal) {
+        const proxies = [
+            (url) => url, // Tentativa direta
+            (url) => "https://corsproxy.io/?" + encodeURIComponent(url),
+            (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+            (url) => "https://thingproxy.freeboard.io/fetch/" + url
+        ];
+
+        for (let i = 0; i < proxies.length; i++) {
+            try {
+                const urlFinal = proxies[i](urlOriginal);
+                const res = await fetch(urlFinal);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text.includes("#EXTM3U")) return text;
+                }
+            } catch (e) {
+                console.warn(`Tentativa ${i + 1} falhou. Tentando próximo método...`);
+            }
+        }
+        throw new Error("Todos os métodos de conexão falharam.");
+    }
+
     document.getElementById("btnEntrar").onclick = async () => {
         const status = document.getElementById("statusMsg");
-        status.textContent = "Conectando...";
+        status.textContent = "Conectando ao Firebase...";
 
         try {
             const doc = await db.collection("devices").doc(currentID).get();
@@ -93,19 +116,16 @@
             if (!data.authorized) return status.textContent = "Dispositivo não autorizado.";
             if (!data.fixed_url) return status.textContent = "Sem URL cadastrada.";
 
-            status.textContent = "Carregando canais...";
+            status.textContent = "Baixando lista de canais...";
             
-            // Proxy para resolver o CORS no navegador sem mexer no servidor
-            const urlProxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(data.fixed_url.trim());
-            const res = await fetch(urlProxy);
-            const text = await res.text();
+            const text = await baixarLista(data.fixed_url.trim());
 
             parseM3U(text);
             document.getElementById("loginScreen").classList.add("hidden");
             document.getElementById("mainScreen").classList.remove("hidden");
             carregarAba('tv');
         } catch (e) {
-            status.textContent = "Erro ao carregar dados. Verifique a URL M3U.";
+            status.textContent = "O servidor da lista bloqueou conexões Web (CORS).";
         }
     };
 
