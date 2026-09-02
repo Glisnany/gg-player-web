@@ -2,21 +2,43 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Web Player Ultra</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        *, *::before, *::after {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        /* Otimizações Globais de Renderização */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             background-color: #121212;
             color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            background-attachment: fixed;
+        }
+
+        body {
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            position: relative;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
+
+        /* Camadas Aceleradas por GPU */
+        .layer-gpu {
+            transform: translateZ(0);
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
         .container {
             background-color: #1e1e1e;
             padding: 30px;
@@ -25,12 +47,16 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             max-width: 400px;
             width: 90%;
+            contain: content;
         }
+
         .logo {
             max-width: 120px;
             height: auto;
             margin-bottom: 15px;
+            contain: strict;
         }
+
         .id-box {
             display: flex;
             align-items: center;
@@ -40,38 +66,44 @@
             padding: 10px;
             border-radius: 8px;
             margin: 15px 0;
-            font-family: monospace;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             font-size: 1.1em;
+            contain: inline-size;
         }
+
         button {
             background-color: #007bff;
-            color: white;
+            color: #ffffff;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 1em;
-            transition: 0.2s;
+            font-weight: bold;
+            width: 100%;
+            touch-action: manipulation;
         }
-        button:hover {
-            background-color: #0056b3;
-        }
+
         .btn-copy {
-            background-color: #333;
+            background-color: #333333;
+            width: auto;
             padding: 6px 12px;
             font-size: 0.9em;
         }
-        .btn-copy:hover {
-            background-color: #555;
+
+        /* Otimização de Troca de Telas (Evita Reflow) */
+        .hidden {
+            display: none !important;
         }
-        /* Tela Principal de Navegação (Escondida por padrão) */
+
         #mainScreen {
-            display: none;
             width: 100%;
             height: 100vh;
-            box-sizing: border-box;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
         }
+
         .header {
             display: flex;
             align-items: center;
@@ -79,18 +111,38 @@
             background-color: #1e1e1e;
             padding: 10px 20px;
             border-radius: 8px;
+            contain: content;
         }
+
         .header .logo {
             max-width: 80px;
             margin-bottom: 0;
         }
-        /* Botão de Suporte Discreto no Rodapé */
+
+        .player-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            contain: strict;
+        }
+
+        video {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 8px;
+            background: #000000;
+            object-fit: contain;
+        }
+
         .btn-suporte {
             position: fixed;
-            bottom: 15px;
-            right: 15px;
+            bottom: calc(15px + env(safe-area-inset-bottom));
+            right: calc(15px + env(safe-area-inset-right));
             background-color: #25D366;
-            color: white;
+            color: #ffffff;
             text-decoration: none;
             padding: 8px 14px;
             border-radius: 20px;
@@ -100,69 +152,139 @@
             align-items: center;
             gap: 6px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            opacity: 0.85;
-            transition: opacity 0.2s;
-        }
-        .btn-suporte:hover {
-            opacity: 1;
+            z-index: 999;
+            touch-action: manipulation;
         }
     </style>
 </head>
 <body>
 
-<!-- TELA DE LOGIN / ID -->
-<div class="container" id="loginScreen">
-    <img src="logo_gg.png" alt="Logo GG" class="logo">
+<div class="container layer-gpu" id="loginScreen">
+    <img src="logo_gg.png" alt="Logo GG" class="logo" loading="eager" decoding="async">
     <h2>Acesso ao Player</h2>
     <p>Seu ID do dispositivo:</p>
     
     <div class="id-box">
         <span id="deviceId">Carregando...</span>
-        <button class="btn-copy" onclick="copiarID()">Copiar</button>
+        <button class="btn-copy" id="btnCopiar">Copiar</button>
     </div>
 
-    <button id="btnEntrar" onclick="verificarAcesso()">Entrar</button>
+    <button id="btnEntrar">Entrar</button>
 </div>
 
-<!-- TELA PRINCIPAL DE NAVEGAÇÃO -->
-<div id="mainScreen">
+<div id="mainScreen" class="hidden layer-gpu">
     <div class="header">
-        <img src="logo_gg.png" alt="Logo GG" class="logo">
+        <img src="logo_gg.png" alt="Logo GG" class="logo" loading="eager" decoding="async">
         <h2>Painel Principal</h2>
     </div>
-    <div style="margin-top: 40px; text-align: center;">
-        <p>Bem-vindo ao Player! Conteúdo da navegação aqui.</p>
+    <div class="player-container">
+        <video id="mediaPlayer" controls playsinline webkit-playsinline preload="metadata">
+            <source src="" type="video/mp4">
+            Seu navegador não suporta este vídeo.
+        </video>
     </div>
 </div>
 
-<!-- SUPORTE WHATSAPP (FIXO E DISCRETO) -->
-<a href="https://wa.me/5584998457394?text=Olá,%20preciso%20de%20suporte%20com%20o%20Web%20Player." target="_blank" class="btn-suporte">
+<a href="https://wa.me/5584998457394?text=Olá,%20preciso%20de%20suporte%20com%20o%20Web%20Player." target="_blank" class="btn-suporte layer-gpu">
     💬 Suporte
 </a>
 
 <script>
-    function obterOuGerarID() {
-        let id = localStorage.getItem("device_id");
-        if (!id) {
-            id = "GG-" + Math.random().toString(36).substring(2, 9).toUpperCase();
-            localStorage.setItem("device_id", id);
-        }
-        return id;
+    'use strict';
+
+    let currentID = "";
+    const loginScreen = document.getElementById("loginScreen");
+    const mainScreen = document.getElementById("mainScreen");
+    const deviceIdEl = document.getElementById("deviceId");
+    const mediaPlayer = document.getElementById("mediaPlayer");
+
+    // Persistência com fallback rápido
+    function obterIDLocal() {
+        return localStorage.getItem("device_id");
     }
 
-    const deviceId = obterOuGerarID();
-    document.getElementById("deviceId").innerText = deviceId;
+    function salvarIDLocal(id) {
+        localStorage.setItem("device_id", id);
+    }
 
-    function copiarID() {
-        navigator.clipboard.writeText(deviceId).then(() => {
-            alert("ID copiado para a área de transferência!");
+    function lerIndexedDB() {
+        return new Promise(resolve => {
+            const req = indexedDB.open("GGPlayerDB", 1);
+            req.onupgradeneeded = e => e.target.result.createObjectStore("config");
+            req.onsuccess = e => {
+                const db = e.target.result;
+                const tx = db.transaction("config", "readonly");
+                const getReq = tx.objectStore("config").get("device_id");
+                getReq.onsuccess = () => resolve(getReq.result || null);
+                getReq.onerror = () => resolve(null);
+            };
+            req.onerror = () => resolve(null);
         });
     }
 
-    function verificarAcesso() {
-        // Exemplo: Simula acesso permitido e transição para a tela principal
-        document.getElementById("loginScreen").style.display = "none";
-        document.getElementById("mainScreen").style.display = "block";
+    function salvarIndexedDB(id) {
+        const req = indexedDB.open("GGPlayerDB", 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore("config");
+        req.onsuccess = e => {
+            const db = e.target.result;
+            const tx = db.transaction("config", "readwrite");
+            tx.objectStore("config").put(id, "device_id");
+        };
+    }
+
+    async function inicializarID() {
+        currentID = obterIDLocal();
+        if (!currentID) {
+            currentID = await lerIndexedDB();
+        }
+        if (!currentID) {
+            currentID = "GG-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+        }
+        salvarIDLocal(currentID);
+        salvarIndexedDB(currentID);
+        deviceIdEl.textContent = currentID;
+    }
+
+    // Copiar sem travar a UI
+    function copiarID() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(currentID).then(() => alert("ID copiado!"));
+        } else {
+            const el = document.createElement('textarea');
+            el.value = currentID;
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            alert("ID copiado!");
+        }
+    }
+
+    // Ativação limpa de mídia e troca de telas
+    function verificarEAbrir() {
+        mediaPlayer.load(); // Desbloqueia áudio/vídeo no Safari iOS
+        loginScreen.classList.add("hidden");
+        mainScreen.classList.remove("hidden");
+    }
+
+    // Event Listeners diretos (Evita atraso de clique no iOS)
+    document.getElementById("btnCopiar").addEventListener("click", copiarID, { passive: true });
+    document.getElementById("btnEntrar").addEventListener("click", verificarEAbrir);
+
+    // Gestão de memória do vídeo para iOS
+    window.addEventListener("pagehide", () => {
+        mediaPlayer.pause();
+        mediaPlayer.removeAttribute("src");
+        mediaPlayer.load();
+    });
+
+    // Inicialização sem bloquear a renderização
+    if (window.requestIdleCallback) {
+        requestIdleCallback(inicializarID);
+    } else {
+        setTimeout(inicializarID, 0);
     }
 </script>
 
