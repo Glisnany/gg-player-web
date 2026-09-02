@@ -2,336 +2,65 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GG Player Web</title>
-    
-    <!-- Hls.js para reprodução fluida no iOS Safari / Windows -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-        }
-
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #121212;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            overflow: hidden;
-        }
-
-        body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-        }
-
-        .layer-gpu {
-            transform: translateZ(0);
-            will-change: transform, opacity;
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-        }
-
+        body { background: #121212; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .container { background: #1e1e1e; padding: 25px; border-radius: 10px; text-align: center; max-width: 400px; width: 90%; }
+        .id-box { background: #2a2a2a; padding: 10px; border-radius: 5px; margin: 15px 0; font-family: monospace; }
+        button { background: #007bff; color: #fff; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
         .hidden { display: none !important; }
-
-        /* TELA DE LOGIN / STATUS */
-        .container {
-            background-color: #1e1e1e;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            max-width: 400px;
-            width: 90%;
-            contain: content;
-        }
-
-        .logo { max-width: 120px; height: auto; margin-bottom: 15px; }
-
-        .id-box {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background-color: #2a2a2a;
-            padding: 10px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-family: monospace;
-            font-size: 1.1em;
-        }
-
-        button {
-            background-color: #007bff;
-            color: #ffffff;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            width: 100%;
-            touch-action: manipulation;
-        }
-
-        button:hover { background-color: #0056b3; }
-        .btn-copy { background-color: #333333; width: auto; padding: 6px 12px; font-size: 0.9em; }
-
-        .status-msg {
-            margin-top: 15px;
-            font-size: 0.9em;
-            color: #ff9800;
-        }
-
-        /* TELA PRINCIPAL IPTV */
-        #mainScreen {
-            width: 100%;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-color: #0d0d0d;
-        }
-
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: #1a1a1a;
-            padding: 10px 20px;
-            border-bottom: 1px solid #2a2a2a;
-        }
-
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .header .logo { max-width: 60px; margin-bottom: 0; }
-
-        .nav-tabs {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            background-color: #141414;
-            padding: 10px;
-            border-bottom: 1px solid #222;
-        }
-
-        .tab-btn {
-            background: #222;
-            color: #aaa;
-            border: 1px solid #333;
-            padding: 10px 20px;
-            border-radius: 20px;
-            width: auto;
-            font-size: 0.95em;
-            transition: all 0.2s ease;
-        }
-
-        .tab-btn.active {
-            background: #007bff;
-            color: #fff;
-            border-color: #007bff;
-        }
-
-        .content-area {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            width: 240px;
-            background-color: #121212;
-            border-right: 1px solid #222;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 10px;
-        }
-
-        .cat-item {
-            padding: 12px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            color: #ccc;
-            font-size: 0.9em;
-            margin-bottom: 4px;
-        }
-
-        .cat-item:hover, .cat-item.active {
-            background-color: #222;
-            color: #007bff;
-            font-weight: bold;
-        }
-
-        .media-grid {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-            gap: 15px;
-            align-content: start;
-        }
-
-        .media-card {
-            background-color: #1a1a1a;
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s;
-            text-align: center;
-        }
-
-        .media-card:hover { transform: scale(1.03); }
-
-        .media-card img {
-            width: 100%;
-            aspect-ratio: 2/3;
-            object-fit: cover;
-            background-color: #222;
-            display: block;
-        }
-
-        .media-card .title {
-            padding: 8px;
-            font-size: 0.8em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* PLAYER OVERLAY */
-        #playerModal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .player-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 15px;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .btn-close {
-            background: rgba(255,255,255,0.2);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2em;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        .btn-suporte {
-            position: fixed;
-            bottom: calc(15px + env(safe-area-inset-bottom));
-            right: calc(15px + env(safe-area-inset-right));
-            background-color: #25D366;
-            color: #ffffff;
-            text-decoration: none;
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            z-index: 999;
-            touch-action: manipulation;
-        }
+        #mainScreen { width: 100%; height: 100vh; display: flex; flex-direction: column; background: #0d0d0d; }
+        .nav-tabs { display: flex; justify-content: center; gap: 10px; padding: 10px; background: #141414; }
+        .tab-btn { background: #222; color: #aaa; border: none; padding: 8px 16px; border-radius: 15px; cursor: pointer; }
+        .tab-btn.active { background: #007bff; color: #fff; }
+        .content { flex: 1; display: flex; overflow: hidden; }
+        .sidebar { width: 200px; background: #121212; overflow-y: auto; padding: 10px; }
+        .cat-item { padding: 8px; cursor: pointer; color: #ccc; }
+        .cat-item.active { color: #007bff; font-weight: bold; }
+        .grid { flex: 1; padding: 15px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+        .card { background: #1a1a1a; border-radius: 5px; text-align: center; cursor: pointer; padding: 5px; }
+        .card img { width: 100%; height: 150px; object-fit: cover; }
+        .card .title { font-size: 0.8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #playerModal { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; }
+        .player-head { padding: 10px; display: flex; justify-content: space-between; background: rgba(0,0,0,0.7); }
+        video { width: 100%; height: 100%; }
     </style>
 </head>
 <body>
 
-<!-- TELA DE LOGIN / ATIVAÇÃO -->
-<div class="container layer-gpu" id="loginScreen">
-    <img src="logo_gg.png" alt="Logo GG" class="logo" loading="eager" decoding="async">
-    <h2>Acesso ao Player</h2>
-    <p>Seu ID do dispositivo:</p>
-    
-    <div class="id-box">
-        <span id="deviceId">Carregando...</span>
-        <button class="btn-copy" id="btnCopiar">Copiar</button>
-    </div>
-
+<div class="container" id="loginScreen">
+    <h2>GG Player Web</h2>
+    <p>Seu ID:</p>
+    <div class="id-box" id="deviceId">Carregando...</div>
     <button id="btnEntrar">Entrar</button>
-    <div id="statusMsg" class="status-msg"></div>
+    <p id="statusMsg" style="color: #ff9800; font-size: 0.9em;"></p>
 </div>
 
-<!-- TELA PRINCIPAL IPTV -->
-<div id="mainScreen" class="hidden layer-gpu">
-    <div class="header">
-        <div class="header-left">
-            <img src="logo_gg.png" alt="Logo GG" class="logo">
-            <span style="font-weight: bold;">GG Player</span>
-        </div>
-        <span id="userInfo" style="font-size: 0.85em; color: #888;">ID Conectado</span>
-    </div>
-
-    <!-- ABAS PRINCIPAIS -->
+<div id="mainScreen" class="hidden">
     <div class="nav-tabs">
-        <button class="tab-btn active" onclick="carregarAba('tv')">📺 TV ao Vivo</button>
+        <button class="tab-btn active" onclick="carregarAba('tv')">📺 TV</button>
         <button class="tab-btn" onclick="carregarAba('filmes')">🎬 Filmes</button>
         <button class="tab-btn" onclick="carregarAba('series')">🍿 Séries</button>
     </div>
-
-    <div class="content-area">
+    <div class="content">
         <div class="sidebar" id="categoryList"></div>
-        <div class="media-grid" id="mediaGrid"></div>
+        <div class="grid" id="mediaGrid"></div>
     </div>
 </div>
 
-<!-- PLAYER OVERLAY -->
 <div id="playerModal" class="hidden">
-    <div class="player-header">
-        <span id="playerTitle">Reproduzindo</span>
-        <button class="btn-close" onclick="fecharPlayer()">✕</button>
+    <div class="player-head">
+        <span id="playerTitle"></span>
+        <button onclick="fecharPlayer()" style="width:auto;">✕ Fechar</button>
     </div>
-    <video id="mediaPlayer" controls playsinline webkit-playsinline preload="metadata"></video>
+    <video id="mediaPlayer" controls></video>
 </div>
-
-<a href="https://wa.me/5584998457394?text=Olá,%20preciso%20de%20suporte%20com%20o%20Web%20Player." target="_blank" class="btn-suporte layer-gpu">
-    💬 Suporte
-</a>
 
 <script>
-    'use strict';
-
-    // ==========================================
-    // CONFIGURAÇÃO DO FIREBASE (SOMENTE LEITURA)
-    // ==========================================
     const firebaseConfig = {
         apiKey: "AIzaSyC06Bn7C-llo0B0vIfE7Nxq5vkEhBk2U-w",
         authDomain: "gg-gestao.firebaseapp.com",
@@ -341,226 +70,113 @@
         appId: "1:499414114342:web:8d8b9e4f89fff9179706e7"
     };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ==========================================
-    // ESTADO GLOBAL
-    // ==========================================
-    let currentID = "";
-    let hlsInstance = null;
+    let currentID = localStorage.getItem("device_id") || "GG-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+    localStorage.setItem("device_id", currentID);
+    document.getElementById("deviceId").textContent = currentID;
+
+    let playlist = { tv: [], filmes: [], series: [] };
     let abaAtual = 'tv';
-    let playlistData = { tv: [], filmes: [], series: [] };
+    let hls = null;
 
-    const loginScreen = document.getElementById("loginScreen");
-    const mainScreen = document.getElementById("mainScreen");
-    const statusMsg = document.getElementById("statusMsg");
-    const mediaPlayer = document.getElementById("mediaPlayer");
-    const playerModal = document.getElementById("playerModal");
-
-    function isAdult(name) {
-        if (!name) return false;
-        return /(XXX|18\+|PORN|ADULTO|SEXX)/i.test(name);
-    }
-
-    function obterIDLocal() { return localStorage.getItem("device_id"); }
-    function salvarIDLocal(id) { localStorage.setItem("device_id", id); }
-
-    function inicializarID() {
-        currentID = obterIDLocal();
-        if (!currentID) {
-            currentID = "GG-" + Math.random().toString(36).substring(2, 9).toUpperCase();
-            salvarIDLocal(currentID);
-        }
-        document.getElementById("deviceId").textContent = currentID;
-    }
-
-    // ==========================================
-    // LEITURA DO FIREBASE E PROXY CORS PARA M3U
-    // ==========================================
-    async function iniciarConexao() {
-        statusMsg.textContent = "Consultando dispositivo...";
+    document.getElementById("btnEntrar").onclick = async () => {
+        const status = document.getElementById("statusMsg");
+        status.textContent = "Conectando...";
 
         try {
-            const docRef = db.collection("devices").doc(currentID);
-            const docSnap = await docRef.get();
-
-            if (!docSnap.exists) {
-                statusMsg.textContent = "ID não cadastrado no painel. Cadastre o ID exibido acima.";
-                return;
-            }
-
-            const data = docSnap.data();
-
-            if (data.authorized !== true) {
-                statusMsg.textContent = "Acesso negado: Dispositivo não autorizado.";
-                return;
-            }
-
-            const mode = (data.mode || "").toLowerCase();
-            if (mode !== "fixed") {
-                statusMsg.textContent = `Modo '${data.mode}' não é suportado pelo Web Player.`;
-                return;
-            }
-
-            let m3uUrl = data.fixed_url ? data.fixed_url.trim() : "";
-            if (!m3uUrl) {
-                statusMsg.textContent = "Nenhuma lista M3U (fixed_url) associada a este dispositivo.";
-                return;
-            }
-
-            statusMsg.textContent = "Baixando lista de canais...";
-
-            // Burlar bloqueio de CORS do navegador usando Proxy
-            const corsProxy = "https://corsproxy.io/?";
-            const targetUrl = corsProxy + encodeURIComponent(m3uUrl);
-
-            const res = await fetch(targetUrl);
-            if (!res.ok) throw new Error(`Falha no download (HTTP ${res.status})`);
+            const doc = await db.collection("devices").doc(currentID).get();
+            if (!doc.exists) return status.textContent = "ID não cadastrado no painel.";
             
-            const m3uText = await res.text();
-            parseM3U(m3uText);
+            const data = doc.data();
+            if (!data.authorized) return status.textContent = "Dispositivo não autorizado.";
+            if (!data.fixed_url) return status.textContent = "Sem URL cadastrada.";
 
-            statusMsg.textContent = "Carregado com sucesso!";
-            loginScreen.classList.add("hidden");
-            mainScreen.classList.remove("hidden");
+            status.textContent = "Carregando canais...";
+            
+            // Proxy para resolver o CORS no navegador sem mexer no servidor
+            const urlProxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(data.fixed_url.trim());
+            const res = await fetch(urlProxy);
+            const text = await res.text();
+
+            parseM3U(text);
+            document.getElementById("loginScreen").classList.add("hidden");
+            document.getElementById("mainScreen").classList.remove("hidden");
             carregarAba('tv');
-
-        } catch (error) {
-            console.error("Erro na leitura:", error);
-            statusMsg.textContent = "Erro de conexão/CORS ao baixar a lista. O servidor da lista bloqueou a requisição Web.";
+        } catch (e) {
+            status.textContent = "Erro ao carregar dados. Verifique a URL M3U.";
         }
-    }
+    };
 
-    // ==========================================
-    // PARSER DA LISTA M3U
-    // ==========================================
     function parseM3U(content) {
-        playlistData = { tv: [], filmes: [], series: [] };
-        const lines = content.split('\n');
-        let currentItem = null;
-
-        for (let line of lines) {
+        playlist = { tv: [], filmes: [], series: [] };
+        let item = null;
+        content.split('\n').forEach(line => {
             line = line.trim();
             if (line.startsWith('#EXTINF:')) {
                 const name = line.split(',')[1] || "Sem Nome";
-                const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-                const groupMatch = line.match(/group-title="([^"]+)"/);
-
-                currentItem = {
-                    name: name.trim(),
-                    logo: logoMatch ? logoMatch[1] : "",
-                    group: groupMatch ? groupMatch[1] : "Geral"
-                };
-            } else if (line.startsWith('http://') || line.startsWith('https://')) {
-                if (currentItem) {
-                    currentItem.url = line;
-                    const groupUpper = currentItem.group.toUpperCase();
-
-                    if (groupUpper.includes("FILME") || groupUpper.includes("VOD") || line.includes("/movie/")) {
-                        playlistData.filmes.push(currentItem);
-                    } else if (groupUpper.includes("SERIE") || line.includes("/series/")) {
-                        playlistData.series.push(currentItem);
-                    } else {
-                        playlistData.tv.push(currentItem);
-                    }
-                    currentItem = null;
-                }
+                const logo = (line.match(/tvg-logo="([^"]+)"/) || [])[1] || "";
+                const group = (line.match(/group-title="([^"]+)"/) || [])[1] || "Geral";
+                item = { name, logo, group };
+            } else if (line.startsWith('http') && item) {
+                item.url = line;
+                const g = item.group.toUpperCase();
+                if (g.includes("FILME") || line.includes("/movie/")) playlist.filmes.push(item);
+                else if (g.includes("SERIE") || line.includes("/series/")) playlist.series.push(item);
+                else playlist.tv.push(item);
+                item = null;
             }
-        }
+        });
     }
 
-    // ==========================================
-    // INTERFACE DE NAVEGAÇÃO
-    // ==========================================
     function carregarAba(tipo) {
         abaAtual = tipo;
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        if (event && event.target) event.target.classList.add('active');
-
-        const sidebar = document.getElementById("categoryList");
-        sidebar.innerHTML = `<div class="cat-item active" onclick="filtrarCategoria('todas')">Todas as Categorias</div>`;
-
-        const grupos = [...new Set(playlistData[tipo].map(i => i.group))];
-        grupos.forEach(grp => {
-            if (!isAdult(grp)) {
-                sidebar.innerHTML += `<div class="cat-item" onclick="filtrarCategoria('${grp.replace(/'/g, "\\'")}')">${grp}</div>`;
-            }
-        });
-
-        filtrarCategoria('todas');
+        const side = document.getElementById("categoryList");
+        side.innerHTML = `<div class="cat-item active" onclick="filtrar('')">Todas</div>`;
+        
+        const grupos = [...new Set(playlist[tipo].map(i => i.group))];
+        grupos.forEach(g => side.innerHTML += `<div class="cat-item" onclick="filtrar('${g}')">${g}</div>`);
+        filtrar('');
     }
 
-    function filtrarCategoria(grupo) {
-        document.querySelectorAll('.cat-item').forEach(el => el.classList.remove('active'));
-        if (event && event.target) event.target.classList.add('active');
-
+    function filtrar(grp) {
         const grid = document.getElementById("mediaGrid");
         grid.innerHTML = "";
-
-        const itens = playlistData[abaAtual].filter(i => {
-            if (isAdult(i.name) || isAdult(i.group)) return false;
-            return grupo === 'todas' || i.group === grupo;
-        });
-
-        itens.forEach(item => {
-            const logo = item.logo || "https://via.placeholder.com/150x225?text=Sem+Capa";
+        const lista = grp ? playlist[abaAtual].filter(i => i.group === grp) : playlist[abaAtual];
+        
+        lista.forEach(i => {
             grid.innerHTML += `
-                <div class="media-card" onclick="reproduzirMidia('${item.url}', '${item.name.replace(/'/g, "\\'")}')">
-                    <img src="${logo}" alt="${item.name}" loading="lazy">
-                    <div class="title">${item.name}</div>
-                </div>
-            `;
+                <div class="card" onclick="play('${i.url}', '${i.name}')">
+                    <img src="${i.logo || 'https://via.placeholder.com/120x150'}">
+                    <div class="title">${i.name}</div>
+                </div>`;
         });
     }
 
-    // ==========================================
-    // REPRODUTOR DE VÍDEO
-    // ==========================================
-    function reproduzirMidia(url, titulo) {
+    function play(url, titulo) {
         document.getElementById("playerTitle").textContent = titulo;
-        playerModal.classList.remove("hidden");
+        document.getElementById("playerModal").classList.remove("hidden");
+        const video = document.getElementById("mediaPlayer");
 
-        if (url.includes(".m3u8") || url.includes("/live/")) {
-            if (Hls.isSupported()) {
-                if (hlsInstance) hlsInstance.destroy();
-                hlsInstance = new Hls({ maxBufferLength: 30 });
-                hlsInstance.loadSource(url);
-                hlsInstance.attachMedia(mediaPlayer);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => mediaPlayer.play());
-            } else if (mediaPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-                mediaPlayer.src = url;
-                mediaPlayer.play();
-            }
+        if (Hls.isSupported() && url.includes(".m3u8")) {
+            if (hls) hls.destroy();
+            hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         } else {
-            if (hlsInstance) {
-                hlsInstance.destroy();
-                hlsInstance = null;
-            }
-            mediaPlayer.src = url;
-            mediaPlayer.play();
+            video.src = url;
+            video.play();
         }
     }
 
     function fecharPlayer() {
-        if (hlsInstance) {
-            hlsInstance.destroy();
-            hlsInstance = null;
-        }
-        mediaPlayer.pause();
-        mediaPlayer.removeAttribute("src");
-        playerModal.classList.add("hidden");
+        if (hls) hls.destroy();
+        const video = document.getElementById("mediaPlayer");
+        video.pause();
+        document.getElementById("playerModal").classList.add("hidden");
     }
-
-    document.getElementById("btnCopiar").addEventListener("click", () => {
-        navigator.clipboard.writeText(currentID).then(() => alert("ID copiado!"));
-    });
-    document.getElementById("btnEntrar").addEventListener("click", iniciarConexao);
-
-    inicializarID();
 </script>
-
 </body>
 </html>
